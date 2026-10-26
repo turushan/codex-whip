@@ -4,32 +4,30 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
     <channel>
         <title>Codex Whip</title>
         <item>
-            <title>1.8.0</title>
-            <pubDate>Mon, 26 Oct 2026 22:17:12 +0100</pubDate>
+            <title>1.8.1</title>
+            <pubDate>Mon, 26 Oct 2026 23:21:24 +0100</pubDate>
             <link>https://github.com/turushan/codex-whip</link>
-            <sparkle:version>1.8.0</sparkle:version>
-            <sparkle:shortVersionString>1.8.0</sparkle:shortVersionString>
+            <sparkle:version>1.8.1</sparkle:version>
+            <sparkle:shortVersionString>1.8.1</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
             <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="plain-text"><![CDATA[Codex Whip 1.8.0
+            <description sparkle:format="plain-text"><![CDATA[Codex Whip 1.8.1
 
-Same model. Keep going.
+A quiet heads-up when a new version is ready.
 
-Automatically retry capacity errors and resume unfinished work when ordinary quota becomes available again.
+• A new update is available… appears at the top of the menu with an orange dot.
+• Click the notice to review the update and choose when to install.
+• With Automatic Updates off, quiet daily checks stay on while new updates wait for your choice.
+• Existing preferences migrate once without enabling automatic downloads.
 
-• Five-minute checks and three-minute capacity retries by default.
-• Retry and check intervals, message editing and activity history from the menu bar.
-• A continuous demo with original whip sounds.
-• A clean blue app icon and more time for a cold first launch.
+Your retry settings, session state, history, app identity and update-verification key are preserved.
 
-Uses your existing Codex CLI session, model and settings. Never changes accounts or consumes reset credits.
-
-macOS 14 or later. Apple silicon and Intel downloads. This community build is ad hoc signed and is not Apple-notarized.
+macOS 14 or later. This community build is ad hoc signed and is not Apple-notarized.
 ]]></description>
-            <enclosure url="https://github.com/turushan/codex-whip/releases/download/v1.8.0/Codex-Whip-arm64.dmg" length="14773047" type="application/octet-stream" sparkle:edSignature="gqEpHG3Zf+h/l+Dj6Y0h2mYsc0DKfQ87Yz3NCWd6tNN9AjG/kaBFK2DDhBFCDVA3l4TwALgU9NzJ5hxQ0sNbAw=="></enclosure>
+            <enclosure url="https://github.com/turushan/codex-whip/releases/download/v1.8.1/Codex-Whip-arm64.dmg" length="25588015" type="application/octet-stream" sparkle:edSignature="dcdFdQy1+7uAp8gMQh8KKSEzPS+H5hwO+jSWOiJDpk6APPx1JrMkVWW08BsbhkHjPbrTMU1TPrUxrdh/ghmBCw=="></enclosure>
         </item>
     </channel>
 </rss><!-- sparkle-signatures:
-edSignature: 8TomQPoI/P5oPgyW7X5dbVVsbd//pWg3oCFCt2kWDUqQ++yjI/oaVerqyqCvd6SBk7MHKSwvbh6b9SaOCSZYDA==
-length: 1927
+edSignature: lOCSjkqVy+wzYmVPSqHVz2g8GrEDJsr/TsWOgGikzds7c9Hoicm4k3Hrclqw3LBPdKHYNnZLLOZSFG6IvIFRBQ==
+length: 1857
 -->
