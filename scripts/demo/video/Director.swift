@@ -500,8 +500,8 @@ final class Director {
                 let enter = spring(t - film.ctaEnters, frequency: 1.6, damping: 0.75)
                 cg.withAlpha(clamp01((t - film.ctaEnters) / 0.3)) {
                     let pillStyle = TextStyle(font: Fonts.text(24, .semibold), color: Palette.ink)
-                    let urlStyle = TextStyle(font: Fonts.text(24, .medium), color: Palette.white)
-                    let pillText = "Download for Mac", url = "github.com/turushan/codex-whip"
+                    let urlStyle = TextStyle(font: Fonts.text(30, .semibold), color: Palette.white, kern: -0.3)
+                    let pillText = "Download free", url = "codexwhip.com"
                     let pillWidth = measure(pillText, pillStyle) + 56
                     let gap = 28.0
                     let rowWidth = pillWidth + gap + measure(url, urlStyle)
@@ -509,9 +509,9 @@ final class Director {
                     let pill = CGRect(x: rowX, y: y, width: pillWidth, height: 56)
                     cg.fill(pill, Palette.cyan, radius: 28)
                     drawText(pillText, x: pill.minX + 28, baseline: pill.minY + 36, pillStyle)
-                    drawText(url, x: pill.maxX + gap, baseline: pill.minY + 36, urlStyle)
+                    drawText(url, x: pill.maxX + gap, baseline: pill.minY + 38, urlStyle)
                     let fine = TextStyle(font: Fonts.text(18), color: Palette.tertiary)
-                    let fineText = "macOS 14+ · MIT licensed · No extra sign-in · Unofficial Codex CLI companion"
+                    let fineText = "Open source · MIT licensed · macOS 14+ · Unofficial Codex CLI companion"
                     drawText(fineText, x: 960 - measure(fineText, fine) / 2, baseline: 818 + (1 - enter) * 12, fine)
                 }
             }
