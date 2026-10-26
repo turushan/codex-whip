@@ -30,7 +30,7 @@ The app is named Codex Whip; the command and repository are `codex-whip`.
 - Read and write local `settings.json` directly, using atomic saves and authoritative defaults bundled with the app. Reflect CLI preference edits when the menu opens.
 - Use the user's blue developer-blueprint grid and a dimensional braided whip for the large app icon. Keep the menu bar glyph monochrome.
 - Keep the README short and visual, with direct downloads, real screenshots, three setup steps, and collapsed build details.
-- Show capacity retries, scheduled quota renewal, and an early reset announcement in a labeled fifty-six-second marketing animation. Keep continuous whip motion and readable message entry: a silent looping README GIF with a reduced-motion still, plus an MP4 with original whip and interface sound effects.
+- Tell the capacity retry, scheduled quota renewal, and early reset stories in a labeled sixty-second overnight marketing film at 1080p and 60 fps, ending on the native Activity report and menu. Keep readable message entry and a whip whose cracks land on the beat: a silent looping README GIF with a reduced-motion still, plus an MP4 with an original procedural score and sound effects.
 - The Tibo announcement is an illustrated example. Show quota confirmation before continuation; Whip checks Codex usage and does not monitor tweets. Keep the original post/avatar sources and provenance with the assets.
 - Preserve the session, model, reasoning, permissions, and service tier.
 - Distribute a self-contained Mac app and source that users can build themselves.

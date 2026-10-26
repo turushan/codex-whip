@@ -50,18 +50,21 @@ it ends without looping. Bringing the open window forward preserves playback. Cl
 streams; reopening starts from the beginning and retains the user's mute/volume choices during
 the app session. Sound begins at a moderate player volume and never changes the system volume.
 
-The fifty-six-second marketing film carries three connected stories through one terminal world:
-capacity retries, scheduled quota renewal, and an illustrated Tibo reset announcement. Keep legible
-holds and continuous motion through input, conversation, checks, and resumed work. The three-minute
-capacity wait and recurring five-minute quota checks are explicitly compressed. The reset post
-precedes a separate quota confirmation; it never suggests Whip monitors tweets or redeems credits.
+The sixty-second marketing film follows one terminal through a night. Codex stops at 2:14 AM, a
+whip crack introduces the app, and three stories follow on the menu bar clock: a capacity retry, a
+scheduled quota renewal, and an illustrated Tibo reset announcement. Morning ends on the native
+Activity report and menu, then "Same model. Keep going." holds from 52 seconds. A Whip timeline
+column explains each wait; the three-minute capacity wait and five-minute quota checks are
+explicitly compressed. The reset post precedes a separate Codex quota confirmation; it never
+suggests Whip monitors posts or redeems credits.
 
-Each story earns a whip wind-up, snap, follow-through and recoil. Nine restrained original whip
-sounds align with those impacts; quiet typing, check, renewal and notification cues support the
-story without constant music. Each strike reveals words, then the complete default message moves
-into history and output grows character by character. Hold "Same model. Keep going." from 52–56
-seconds. Keep the illustrated/time-compressed disclosure visible. The real app sends saved text at
-once and confirms recovery only after healthy work. The film uses no real sessions or inference.
+The whip is kinematic: a U-turn loop rolls from the handle to the tip, so each crack lands on its
+beat and target, with motion blur, a refractive shockwave and sparks. The capacity story's three
+strikes type the default message; later stories send it with one strike, closer to the real single
+send. An original 120 BPM score in D minor lifts to F major at sunrise; a tape stop marks the halt,
+cracks fall on beats, and checks and chimes are tuned to the key. Keep the illustrated and
+time-compressed disclosure visible. The real app sends saved text at once and confirms recovery
+only after healthy work. The film uses no real sessions or inference.
 
 The README is a short visual product page: lead with the app icon, a clear promise, and direct Mac
 downloads; show the looping demo GIF with a reduced-motion still alternative, a link to the MP4,

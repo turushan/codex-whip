@@ -11,14 +11,14 @@ The app appears in the menu bar. Open Codex CLI normally, then use the menu to p
 watching, choose **Start at Login**, or open **Activity**. Quitting the app stops its helper and
 leaves any Codex turn already running alone.
 
-Choose **Watch Demo…** for a fifty-six-second animation of capacity retries, scheduled quota renewal,
-and an early reset announcement. The bundled video includes original whip and interface sounds,
-with native pause, seek, replay, mute and volume controls. Sound starts only when you open the demo;
+Choose **Watch Demo…** for an illustrated film of capacity retries, a scheduled quota renewal and an
+early reset announcement. The bundled video includes original sound, with native pause, seek, replay,
+mute and volume controls. Sound starts only when you open the demo;
 the player retains your mute/volume choices during this app session.
 
 The fictional sessions are labeled as a demo and include explicit compressed waits. The whip and
 progressive message entry are illustrative; the real watcher sends the saved message at once.
-The reset announcement is an illustrated example: Whip checks Codex quota and does not monitor tweets.
+The reset announcement is an illustrated example: Whip checks Codex quota and does not monitor posts.
 The video works offline and sends no Codex messages. Closing stops both streams; reopening starts
 from the beginning.
 

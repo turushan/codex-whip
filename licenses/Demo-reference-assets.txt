@@ -10,5 +10,6 @@ does not relicense the portrait. Its inclusion does not imply endorsement or
 affiliation. Source URLs and the original file hash are recorded in
 assets/demo/tibo-avatar.provenance.json in the source repository.
 
-The film's sound effects are original procedural synthesis from
-scripts/render_demo_audio.py; no downloaded sound samples or music are used.
+The film's music and sound effects are original procedural synthesis from
+scripts/demo/audio; no downloaded sound samples, sound banks or licensed music
+are used.

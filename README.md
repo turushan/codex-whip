@@ -14,12 +14,12 @@
 <p align="center">
   <a href="docs/demo/codex-whip.mp4">
     <picture>
-      <source media="(prefers-reduced-motion: reduce)" srcset="docs/demo/poster.png?v=1.8.0-launch">
-      <img src="docs/demo/codex-whip.gif?v=1.8.0-launch" alt="Animated demo: capacity retries, regular quota renewal and an early reset return Codex to work with the same model" width="800">
+      <source media="(prefers-reduced-motion: reduce)" srcset="docs/demo/poster.png?v=1.8.0-night">
+      <img src="docs/demo/codex-whip.gif?v=1.8.0-night" alt="Animated demo: a whip crack introduces Codex Whip, then after a capacity error it waits three minutes, types the saved message, and Codex continues with the same model" width="800">
     </picture>
   </a>
 </p>
-<p align="center"><sub>Illustrated demo · Time compressed · <a href="docs/demo/codex-whip.mp4">Watch with sound</a></sub></p>
+<p align="center"><sub>Illustrated demo · Time compressed · <a href="docs/demo/codex-whip.mp4">Watch the full film with sound</a></sub></p>
 
 ## A little nudge. Same session.
 
@@ -43,7 +43,7 @@ Defaults: **check every five minutes · retry capacity every three minutes**. Pa
 2. Open it and choose **Start at Login** if you want it there each morning.
 3. Use **Codex CLI** as usual. Whip watches the loaded terminal sessions.
 
-Choose **Watch Demo…** in the menu for capacity retries, quota renewals, and an early reset in action. Whip sounds included.
+Choose **Watch Demo…** in the menu to see capacity retries, quota renewals, and an early reset in action, with sound.
 
 First launch blocked? This community build has no Apple notarization. [How to open it](docs/INSTALL.md#first-launch).
 
