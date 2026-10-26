@@ -1,0 +1,14 @@
+{
+  "tool": "built-in image_gen",
+  "date": "2026-10-26",
+  "use_case": "stylized-concept",
+  "reference_intent": "User-provided Mac developer-tool icon screenshots (DevCleaner, Pricetag, Proxyman, RocketSim, Xcode), used only for style; no screenshot files are included.",
+  "generation_count": 2,
+  "selected_output": "exec-ed3ddf07-8adc-44c9-9a50-b54f8f8adb9e.png",
+  "source_dimensions": [
+    1254,
+    1254
+  ],
+  "notes": "One generation and one targeted correction for outer alpha cleanup. Native generated resolution retained; application icon packaging performs downsampling."
+}
+

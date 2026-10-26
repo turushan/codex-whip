@@ -1,0 +1,14 @@
+Demo reference asset
+
+The illustrated reset-announcement scene includes Tibo's public profile avatar.
+Source: https://codex-resets.com/thsottiaux-avatar.jpg
+Reference archive: https://codex-resets.com/
+Retrieved: 26 October 2026
+
+The portrait is an unmodified third-party reference asset. The code's MIT license
+does not relicense the portrait. Its inclusion does not imply endorsement or
+affiliation. Source URLs and the original file hash are recorded in
+assets/demo/tibo-avatar.provenance.json in the source repository.
+
+The film's sound effects are original procedural synthesis from
+scripts/render_demo_audio.py; no downloaded sound samples or music are used.

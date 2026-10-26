@@ -1,0 +1,49 @@
+# Product
+
+<!-- impeccable:product-schema 1 -->
+
+## Platform
+
+macOS
+
+## Stack
+
+Native AppKit menu bar app in Swift, wrapping the existing Python retry engine bundled with PyInstaller.
+The user accepted the proposed minimal native Mac app and requested a DMG plus source builds.
+The repository is currently private.
+
+## Users and purpose
+
+Codex terminal users who want their selected model to continue after a temporary capacity failure or usage-quota renewal.
+The app watches existing local terminal sessions and continues only unfinished work.
+The app is named Codex Whip; the command and repository are `codex-whip`.
+
+## Confirmed constraints
+
+- One small menu with watching status, pause, start at login, Retry every, Check every, Retry Message, update controls, activity, Watch Demo…, and quit.
+- Use a whip for the menu bar identity: the user chose the "keep going" metaphor and rejected `arrow.clockwise`.
+- Default to five-minute checks and three-minute capacity retries. Native interval submenu selections apply immediately. Due retries and healthy-turn observations run independently of discovery cadence.
+- Resume supported usage-quota failures only after Codex explicitly permits ordinary usage again for the observed account. This covers regular and early renewals without a reset tracker. Unknown status/account changes hold retries; never consume credits or change accounts/models.
+- Show quota waiting/check status in the menu and separate quota/capacity counts in Activity. Account permission allows a guarded attempt, without guaranteeing selected-model availability.
+- The default retry message is "Keep using the selected model. Continue the unfinished work." Preserve saved custom intervals and messages.
+- Keep a bounded retry-message preview with Edit Message… and Use Default Message. The latter saves immediately; the compact editor's Use Default fills a draft that requires Save. Cancel or closing discards unsaved text.
+- Read and write local `settings.json` directly, using atomic saves and authoritative defaults bundled with the app. Reflect CLI preference edits when the menu opens.
+- Use the user's blue developer-blueprint grid and a dimensional braided whip for the large app icon. Keep the menu bar glyph monochrome.
+- Keep the README short and visual, with direct downloads, real screenshots, three setup steps, and collapsed build details.
+- Show capacity retries, scheduled quota renewal, and an early reset announcement in a labeled fifty-six-second marketing animation. Keep continuous whip motion and readable message entry: a silent looping README GIF with a reduced-motion still, plus an MP4 with original whip and interface sound effects.
+- The Tibo announcement is an illustrated example. Show quota confirmation before continuation; Whip checks Codex usage and does not monitor tweets. Keep the original post/avatar sources and provenance with the assets.
+- Preserve the session, model, reasoning, permissions, and service tier.
+- Distribute a self-contained Mac app and source that users can build themselves.
+- Bundle the committed demo MP4. FFmpeg is needed only to regenerate demo assets, not to build or run the app.
+- Play demo sound only after Watch Demo is selected, with native mute/volume controls and remembered choices during the app session. Closing stops both audio and video.
+- Developer ID signing and notarization are deferred. Disclose the first-launch macOS warning.
+- Keep all session metadata and history on the user's Mac.
+- Count recovery as successful after two uninterrupted minutes of observed retry activity, or successful completion sooner.
+- Keep Sparkle's signed-update controls and optional automatic installation. Public automatic update delivery is unavailable while the repository is private.
+- The old codex-capacity alias was explicitly rejected.
+
+## Evidence
+
+The existing Python engine has automated local protocol and behavior tests and has resumed real capacity-failed sessions.
+The source repository contains no production session data.
+The authored demo uses no live session data or inference requests.

@@ -1,0 +1,53 @@
+name: Build and test
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["updates/**", "docs/**", "README.md"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mac-app:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-15, macos-15-intel]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: "3.13"
+      - name: Build the app and disk image
+        run: python3 scripts/build_app.py
+      - name: Verify native preference storage
+        shell: bash
+        run: |
+          xcrun swiftc -O -swift-version 5 native/Preferences.swift scripts/test_preferences.swift -o "$RUNNER_TEMP/whip-prefs-test"
+          "$RUNNER_TEMP/whip-prefs-test"
+      - name: Check the bundled helper in an isolated directory
+        shell: bash
+        run: |
+          helper="dist/Codex Whip.app/Contents/Helpers/whip-helper"
+          state_dir="$RUNNER_TEMP/codex-whip-smoke"
+          "$helper" --state-dir "$state_dir" prepare
+          "$helper" --state-dir "$state_dir" dashboard
+          codesign --verify --deep --strict "dist/Codex Whip.app"
+      - name: Verify bundled worker shutdown during stalled RPCs
+        shell: bash
+        run: |
+          export CODEX_WHIP_TEST_HELPER="$PWD/dist/Codex Whip.app/Contents/Helpers/whip-helper"
+          python3 -m unittest discover -s tests -p 'test_shutdown.py' -q
+      - name: Upload disk image and checksum
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: codex-whip-${{ matrix.runner }}
+          path: |
+            dist/*.dmg
+            dist/SHA256SUMS.txt
+          if-no-files-found: error

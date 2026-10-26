@@ -1,0 +1,22 @@
+Initial generation prompt (exact)
+
+Use case: stylized-concept
+Asset type: final macOS developer-tool application icon, 1024 x 1024 PNG.
+Primary request: Create ONE polished, tactile, dimensional app icon: a single leather bullwhip sitting above a bright cyan-to-blue blueprint-grid rounded-square tile. This is an icon asset only.
+Reference intent: The user supplied DevCleaner, Pricetag, Proxyman, RocketSim, and Xcode Mac application icon screenshots as STYLE references only. Match their rich cyan/blue gradients, translucent architectural grid, carefully rounded Mac tile, subtle glossy bevel, object rendering and legibility. Do not reproduce their actual objects, logos, screenshot interface or text.
+Scene/backdrop: One straight-on, perfectly upright macOS rounded-square tile, centered with about 6% canvas margin on every side. The tile is bright luminous cyan at the top, smoothly shading to saturated rich royal blue below. Thin, low-opacity white architectural blueprint grid lines span the tile with a few restrained rounded-corner construction guides. A fine glossy beveled rim catches light along the top and sides. Outside the tile and its subtly antialiased rounded corners, use genuine transparent alpha, no opaque background or checkerboard.
+Subject: ONE recognizable single-lash coiled bullwhip, dark chocolate brown nearly black braided leather. One thick short leather handle occupies the lower-right quadrant, slanting from lower-right toward the center; the handle has a rounded weighted pommel and a small restrained metal collar at its upper tip. Exactly one long, continuously connected leather lash emerges from the handle, curls in ONE broad open graceful loop toward the upper-left, then tapers to a single fine free end on the left. The lash is visibly thinner than the handle. The whole silhouette should immediately read as a playful bullwhip; broad clean shapes, one open curl with blue negative space inside, not a pile of rope. No extra dangling loops attached to the handle.
+Style/medium: Premium macOS 3D rendered object like the developer-tool reference icons, natural rounded leather volume, rich high quality studio shading, selective visible braid texture, gentle highlights, soft contact shadow onto the blue tile. The tile stays front-on; only the whip has mild dimensional perspective. More tactile and dimensional than a flat vector icon.
+Composition/framing: Whip centered and large, filling about three quarters of the tile while fully contained within it. Handle bottom-right, open curl upper-left, tapered tip left. Visually balanced and easily recognizable at 32 px, 128 px, and 1024 px. Keep a strong readable outline and clear negative space.
+Lighting/mood: Crisp studio light from upper-left, subtle rim highlights, polished useful Mac developer-tool character.
+Text: none.
+Constraints: Exactly one tile and one bullwhip, one handle, one continuous single lash. Transparent beyond the outer rounded tile. No people, hands, faces, characters, letters, numbers, captions, logos, watermarks, app screenshot UI, broom, hammer, astronaut, rocket, pen, price tag, tassels, flogger, extra objects, busy intricate rope pile, circular badge, tilted tile, flat monochrome rendering, checkerboard pattern, opaque background.
+
+Targeted correction prompt (exact, selected final output)
+
+Use case: precise-object-edit
+Asset type: final 1024 x 1024 PNG macOS app icon with genuine transparency.
+Edit target: the provided generated cyan/blue blueprint tile with the single braided brown bullwhip.
+Change ONLY the outer silhouette cleanup and export framing: remove ALL stray cyan/blue flecks, ragged pixels, detached fragments and colored debris outside the rounded tile. The tile must have a perfectly smooth, clean, antialiased macOS rounded-square outline with about 6% empty transparent canvas margin on all four sides, and genuinely transparent alpha everywhere outside this clean outline. No exterior shadow or glow beyond the rim. Produce exactly 1024 x 1024 pixels.
+Preserve the icon's existing interior design faithfully: same large single brown braided leather bullwhip, same open upper-left loop, lower-right handle, gold collar, blue/cyan gradient, thin blueprint grid, rounded construction guides, fine beveled rim, object shading and composition. Do not redesign or add anything. No text, other objects or checkerboard.
+
