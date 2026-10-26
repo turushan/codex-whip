@@ -16,6 +16,9 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate, SPUStandardUserDriverDeleg
     private var events: [[String: Any]] = []
     private var foundVersion: String?
     private var lastError: String?
+    private static let quietCheckMigrationKey = "QuietUpdateChecksMigrated"
+
+    private(set) var availableUpdateVersion: String?
 
     var isEnabled: Bool { controller != nil }
     var canCheckForUpdates: Bool { controller?.updater.canCheckForUpdates == true }
@@ -66,6 +69,7 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate, SPUStandardUserDriverDeleg
         availabilityObservation = controller.updater.observe(\.canCheckForUpdates, options: [.new]) { [weak self] _, _ in
             self?.onChange?()
         }
+        migrateQuietUpdateChecks()
         let arguments = ProcessInfo.processInfo.arguments
         if isolated && testFeed != nil && arguments.contains("--test-update-toggle") {
             // Test Sparkle's actual preference setters before starting its
@@ -96,17 +100,24 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate, SPUStandardUserDriverDeleg
     func toggleAutomaticUpdates() {
         guard let updater = controller?.updater else { return }
         let enabled = !automaticUpdatesEnabled
-        // Set these only in response to the user's menu action. Initial defaults
-        // remain in Info.plist and Sparkle retains subsequent user preferences.
-        if enabled {
-            updater.automaticallyChecksForUpdates = true
-            updater.automaticallyDownloadsUpdates = true
-        } else {
-            updater.automaticallyDownloadsUpdates = false
-            updater.automaticallyChecksForUpdates = false
-        }
+        // Daily checks can announce a release without downloading or installing it.
+        updater.automaticallyChecksForUpdates = true
+        updater.automaticallyDownloadsUpdates = enabled
         record("automatic-updates-changed")
         onChange?()
+    }
+
+    private func migrateQuietUpdateChecks() {
+        let defaultsDomain = Bundle.main.object(forInfoDictionaryKey: "SUDefaultsDomain") as? String
+        let safeQADomain = defaultsDomain.map { $0.split(separator: ".").contains("qa") } ?? true
+        guard !isolated || (isIsolatedQABundle() && safeQADomain),
+              !UserDefaults.standard.bool(forKey: Self.quietCheckMigrationKey),
+              let updater = controller?.updater else { return }
+        // Earlier versions coupled checking to the automatic-install toggle.
+        // Migrate that preference once, preserving the download/install choice.
+        updater.automaticallyChecksForUpdates = true
+        UserDefaults.standard.set(true, forKey: Self.quietCheckMigrationKey)
+        record("quiet-update-checks-enabled")
     }
 
     private func testAutomaticUpdatesToggle() {
@@ -129,7 +140,7 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate, SPUStandardUserDriverDeleg
             return
         }
         toggleAutomaticUpdates()
-        let disabled = !updater.automaticallyChecksForUpdates && !updater.automaticallyDownloadsUpdates
+        let disabled = updater.automaticallyChecksForUpdates && !updater.automaticallyDownloadsUpdates
         record("toggle-test-off", fields: preferences())
         toggleAutomaticUpdates()
         let enabled = updater.automaticallyChecksForUpdates && updater.automaticallyDownloadsUpdates
@@ -138,7 +149,7 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate, SPUStandardUserDriverDeleg
             lastError = nil
             record("toggle-test-passed")
         } else {
-            lastError = "The update preferences did not both switch off and on."
+            lastError = "Automatic installation did not switch off and on while update checks stayed enabled."
             record("toggle-test-failed")
         }
     }
@@ -156,6 +167,8 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate, SPUStandardUserDriverDeleg
     }
 
     func updaterDidNotFindUpdate(_ updater: SPUUpdater, error: Error) {
+        foundVersion = nil
+        clearUpdateNotice()
         lastError = error.localizedDescription
         record("no-update")
     }
@@ -180,6 +193,7 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate, SPUStandardUserDriverDeleg
     }
 
     func updater(_ updater: SPUUpdater, willInstallUpdate item: SUAppcastItem) {
+        clearUpdateNotice()
         record("installing", fields: ["update_version": item.versionString])
     }
 
@@ -208,6 +222,7 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate, SPUStandardUserDriverDeleg
     }
 
     func updater(_ updater: SPUUpdater, didAbortWithError error: Error) {
+        clearUpdateNotice()
         lastError = error.localizedDescription
         record("aborted")
         installationDidAbort?()
@@ -224,10 +239,37 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate, SPUStandardUserDriverDeleg
         NSApp.activate(ignoringOtherApps: true)
     }
 
+    var supportsGentleScheduledUpdateReminders: Bool { true }
+
+    func standardUserDriverShouldHandleShowingScheduledUpdate(_ update: SUAppcastItem,
+                                                               andInImmediateFocus immediateFocus: Bool) -> Bool {
+        automaticUpdatesEnabled
+    }
+
     func standardUserDriverWillHandleShowingUpdate(_ handleShowingUpdate: Bool,
                                                    forUpdate update: SUAppcastItem,
                                                    state: SPUUserUpdateState) {
+        if !handleShowingUpdate {
+            availableUpdateVersion = update.displayVersionString
+            record("update-notice-shown")
+            onChange?()
+        }
         if state.userInitiated { NSApp.activate(ignoringOtherApps: true) }
+    }
+
+    func standardUserDriverDidReceiveUserAttention(forUpdate update: SUAppcastItem) {
+        record("update-received-attention")
+    }
+
+    func standardUserDriverWillFinishUpdateSession() {
+        clearUpdateNotice()
+    }
+
+    private func clearUpdateNotice() {
+        guard availableUpdateVersion != nil else { return }
+        availableUpdateVersion = nil
+        record("update-notice-cleared")
+        onChange?()
     }
 
     private func record(_ event: String, fields: [String: Any] = [:]) {
@@ -247,6 +289,8 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate, SPUStandardUserDriverDeleg
             "app_build": Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") ?? "",
             "feed": testFeed?.absoluteString as Any? ?? NSNull(),
             "found_version": foundVersion as Any? ?? NSNull(),
+            "available_version": availableUpdateVersion as Any? ?? NSNull(),
+            "quiet_checks_migrated": UserDefaults.standard.bool(forKey: Self.quietCheckMigrationKey),
             "error": lastError as Any? ?? NSNull(),
             "can_check": canCheckForUpdates,
             "automatically_checks": updater?.automaticallyChecksForUpdates == true,

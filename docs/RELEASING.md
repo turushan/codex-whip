@@ -23,11 +23,14 @@ signed files alone do not make a private feed accessible.
 
    ```sh
    python3 scripts/test_updater.py
+   python3 scripts/test_update_notice.py --app "dist/Codex Whip.app"
    ```
 
    This uses QA app copies, separate state and preferences, and a loopback-only update server.
    It tests real update preferences, automatic installation/relaunch, state preservation, and
    rejection of a modified archive without connecting to Codex.
+   The notice test additionally uses Accessibility and Screen Recording access to verify the
+   real menu, quiet discovery without an installer download, and the standard update dialog.
 
 3. Prepare the update feed using the release Keychain key. Plain text notes are optional:
 

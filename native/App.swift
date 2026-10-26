@@ -350,6 +350,8 @@ private final class WorkerSupervisor {
 private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var statusItem: NSStatusItem!
     private let menu = NSMenu()
+    private var updateNoticeItem: NSMenuItem!
+    private let updateNoticeSeparator = NSMenuItem.separator()
     private let statusRow = NSMenuItem(title: "Starting…", action: nil, keyEquivalent: "")
     private let nextRetryRow = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let quotaRow = NSMenuItem(title: "", action: nil, keyEquivalent: "")
@@ -487,6 +489,20 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
     private func buildMenu() {
         menu.autoenablesItems = false
         menu.delegate = self
+        updateNoticeItem = action("A new update is available…", selector: #selector(checkForUpdates))
+        updateNoticeItem.image = NSImage(systemSymbolName: "circle.fill", accessibilityDescription: nil)?
+            .withSymbolConfiguration(NSImage.SymbolConfiguration(paletteColors: [.systemOrange]))
+        updateNoticeItem.image?.size = NSSize(width: 9, height: 9)
+        if #available(macOS 27.0, *) {
+            // Use the public runtime setter so older SDK builds can opt in too.
+            let visibilitySetter = NSSelectorFromString("setPreferredImageVisibility:")
+            if updateNoticeItem.responds(to: visibilitySetter) {
+                updateNoticeItem.setValue(1, forKey: "preferredImageVisibility") // .visible
+            }
+        }
+        updateNoticeItem.isHidden = true
+        updateNoticeSeparator.isHidden = true
+        menu.addItem(updateNoticeSeparator)
         let title = NSMenuItem(title: appName, action: nil, keyEquivalent: "")
         title.isEnabled = false
         menu.addItem(title)
@@ -521,7 +537,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
         menu.addItem(.separator())
         checkForUpdatesItem = action("Check for Updates…", selector: #selector(checkForUpdates))
         automaticUpdatesItem = action("Automatic Updates", selector: #selector(toggleAutomaticUpdates))
-        automaticUpdatesItem.toolTip = "Enable automatic checking, downloading, and installation. Turning this off disables checks and downloads."
+        automaticUpdatesItem.toolTip = "Automatically download and install updates. Quiet daily update checks stay on."
         menu.addItem(.separator())
         _ = action("Activity…", selector: #selector(showActivity))
         _ = action("Watch Demo…", selector: #selector(showDemo))
@@ -554,6 +570,13 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
         preferencesMenu?.refresh()
         let preferenceError = preferenceSetupError ?? preferencesMenu?.errorText
         checkForUpdatesItem.isEnabled = appUpdater?.canCheckForUpdates == true && !installingUpdate
+        let availableVersion = appUpdater?.availableUpdateVersion
+        updateNoticeItem.isHidden = availableVersion == nil
+        updateNoticeSeparator.isHidden = availableVersion == nil
+        updateNoticeItem.isEnabled = checkForUpdatesItem.isEnabled
+        updateNoticeItem.toolTip = availableVersion.map {
+            "Version \($0) is available. Review the update and choose when to install."
+        }
         automaticUpdatesItem.isEnabled = appUpdater?.isEnabled == true && !installingUpdate
         automaticUpdatesItem.state = appUpdater?.automaticUpdatesEnabled == true ? .on : .off
         errorRow.isHidden = helperError == nil && dashboardError == nil && preferenceError == nil

@@ -49,8 +49,9 @@ replace its copy in Applications, and reopen it. Your settings and history remai
 With a publicly accessible feed:
 
 Choose **Check for Updates…** to check GitHub immediately and install an available release.
-The app also checks once a day. **Automatic Updates** enables background downloads, installation,
-and automatic relaunch; turn it off to disable background checks and downloads. Manual checks still work.
+The app checks quietly once a day. **Automatic Updates** enables background downloads, installation,
+and automatic relaunch. With it off, a new release appears as **A new update is available…** at the
+top of the menu. Click it to review and install; nothing downloads until you choose to install.
 Update feeds and archives are verified with the app's embedded Ed25519 public key by Sparkle.
 
 Version 1.2.0 needs one manual upgrade: quit it, replace its copy in Applications with the new
