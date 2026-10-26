@@ -1,0 +1,34 @@
+<?xml version="1.0" standalone="yes"?><!-- sparkle-sign-warning:
+IMPORTANT: This file was signed by Sparkle. Any modifications to this file requires re-signing this file with generate_appcast or sign_update! The signed signature will be embedded at the end of this file.
+--><rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+    <channel>
+        <title>Codex Whip</title>
+        <item>
+            <title>1.8.0</title>
+            <pubDate>Mon, 26 Oct 2026 22:17:45 +0100</pubDate>
+            <link>https://github.com/turushan/codex-whip</link>
+            <sparkle:version>1.8.0</sparkle:version>
+            <sparkle:shortVersionString>1.8.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <description sparkle:format="plain-text"><![CDATA[Codex Whip 1.8.0
+
+Same model. Keep going.
+
+Automatically retry capacity errors and resume unfinished work when ordinary quota becomes available again.
+
+• Five-minute checks and three-minute capacity retries by default.
+• Retry and check intervals, message editing and activity history from the menu bar.
+• A continuous demo with original whip sounds.
+• A clean blue app icon and more time for a cold first launch.
+
+Uses your existing Codex CLI session, model and settings. Never changes accounts or consumes reset credits.
+
+macOS 14 or later. Apple silicon and Intel downloads. This community build is ad hoc signed and is not Apple-notarized.
+]]></description>
+            <enclosure url="https://github.com/turushan/codex-whip/releases/download/v1.8.0/Codex-Whip-x86_64.dmg" length="15448896" type="application/octet-stream" sparkle:edSignature="yA99/WxIQU9IoIbnv9J9Mdgwd9gvSTdD9OrGiSjaknN5JgTBkm/uBc/dWa73YjdBTkszeCXJhyjZ/4bZEupWCQ=="></enclosure>
+        </item>
+    </channel>
+</rss><!-- sparkle-signatures:
+edSignature: dlYVCn8W987he8BN04eQZtLfD3h/lD4U9Tke1WBlycRd8b5NFx+N4O7GPWBmenNWUpBgyGE2UFCSkY/N68trCw==
+length: 1849
+-->

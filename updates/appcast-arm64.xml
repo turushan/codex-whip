@@ -1,0 +1,35 @@
+<?xml version="1.0" standalone="yes"?><!-- sparkle-sign-warning:
+IMPORTANT: This file was signed by Sparkle. Any modifications to this file requires re-signing this file with generate_appcast or sign_update! The signed signature will be embedded at the end of this file.
+--><rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+    <channel>
+        <title>Codex Whip</title>
+        <item>
+            <title>1.8.0</title>
+            <pubDate>Mon, 26 Oct 2026 22:17:12 +0100</pubDate>
+            <link>https://github.com/turushan/codex-whip</link>
+            <sparkle:version>1.8.0</sparkle:version>
+            <sparkle:shortVersionString>1.8.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="plain-text"><![CDATA[Codex Whip 1.8.0
+
+Same model. Keep going.
+
+Automatically retry capacity errors and resume unfinished work when ordinary quota becomes available again.
+
+• Five-minute checks and three-minute capacity retries by default.
+• Retry and check intervals, message editing and activity history from the menu bar.
+• A continuous demo with original whip sounds.
+• A clean blue app icon and more time for a cold first launch.
+
+Uses your existing Codex CLI session, model and settings. Never changes accounts or consumes reset credits.
+
+macOS 14 or later. Apple silicon and Intel downloads. This community build is ad hoc signed and is not Apple-notarized.
+]]></description>
+            <enclosure url="https://github.com/turushan/codex-whip/releases/download/v1.8.0/Codex-Whip-arm64.dmg" length="14773047" type="application/octet-stream" sparkle:edSignature="gqEpHG3Zf+h/l+Dj6Y0h2mYsc0DKfQ87Yz3NCWd6tNN9AjG/kaBFK2DDhBFCDVA3l4TwALgU9NzJ5hxQ0sNbAw=="></enclosure>
+        </item>
+    </channel>
+</rss><!-- sparkle-signatures:
+edSignature: 8TomQPoI/P5oPgyW7X5dbVVsbd//pWg3oCFCt2kWDUqQ++yjI/oaVerqyqCvd6SBk7MHKSwvbh6b9SaOCSZYDA==
+length: 1927
+-->
