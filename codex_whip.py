@@ -24,6 +24,7 @@ import struct
 import subprocess
 import sys
 import time
+import uuid
 
 from history import History, RETENTION_SECONDS, read_report
 from settings import (DEFAULT_MESSAGE, DEFAULT_SETTINGS, ScanScheduler, SettingsError,
@@ -51,6 +52,14 @@ class RequestError(RPCError):
 
 class RPCCancelled(RPCError):
     """The owning worker is stopping; this is not a connection failure."""
+
+
+class RetryNotSubmitted(RPCError):
+    """A local preflight refused a retry before any submission was attempted."""
+
+
+class RetryDeferred(RetryNotSubmitted):
+    """A temporary preflight failure; the pending retry can be checked again."""
 
 
 class WebSocketRPC:
@@ -329,13 +338,19 @@ def snapshot(rpc, thread_id, verify=False):
 
 def watchable(thread):
     source = thread.get("source")
+    supported_source = (
+        source in ("cli", "vscode", "appServer")
+        and (source == "cli" or thread.get("originator") == "codex-tui")
+    ) or (
+        source == "desktop" and thread.get("originator") == "codex-desktop"
+        and thread.get("controlBackend") == "desktop-ipc"
+    )
     return (
         not thread.get("parentThreadId")
         and not thread.get("ephemeral")
         and thread.get("threadSource") in (None, "user")
         and not isinstance(source, dict)
-        and source in ("cli", "vscode", "appServer")
-        and (source == "cli" or thread.get("originator") == "codex-tui")
+        and supported_source
         and thread.get("canAcceptDirectInput") is True
         and bool(thread.get("model"))
     )
@@ -343,6 +358,13 @@ def watchable(thread):
 
 def eligible(thread):
     return watchable(thread) and thread.get("status", {}).get("type") in ("idle", "systemError")
+
+
+def same_control_context(thread, pending):
+    return all(thread.get(field) == pending.get(key) for field, key in (
+        ("controlBackend", "control_backend"), ("controlOwner", "control_owner"),
+        ("controlSettingsFingerprint", "control_settings"),
+    ))
 
 
 class RetryEngine:
@@ -462,8 +484,9 @@ class RetryEngine:
                 self._cancel(thread_id, "failure classification changed")
                 continue
             if pending and (pending["model"] != thread["model"]
-                            or pending["effort"] != thread.get("reasoningEffort")):
-                self._cancel(thread_id, "selected model or reasoning changed")
+                            or pending["effort"] != thread.get("reasoningEffort")
+                            or not same_control_context(thread, pending)):
+                self._cancel(thread_id, "selected model or session settings changed")
                 continue
             if pending is None:
                 pending = {
@@ -475,6 +498,9 @@ class RetryEngine:
                 }
                 if kind == "quota":
                     pending.update(kind="quota", quota_status="unknown")
+                if thread.get("controlBackend") == "desktop-ipc":
+                    pending.update(control_backend="desktop-ipc", control_owner=thread["controlOwner"],
+                                   control_settings=thread["controlSettingsFingerprint"])
                 self.state["pending"][thread_id] = pending
                 self.save(self.state)
                 self.emit("quota_waiting" if kind == "quota" else "waiting",
@@ -485,7 +511,9 @@ class RetryEngine:
                 if now >= pending["due_at"] and self._retry_after.get(thread_id, 0) <= now:
                     quota_candidates.append((thread_id, False))
                 continue
-            if now < pending["due_at"]:
+            desktop_backoff = (pending.get("control_backend") == "desktop-ipc"
+                               and self._retry_after.get(thread_id, 0) > now)
+            if now < pending["due_at"] or desktop_backoff:
                 continue
             self._send_retry(rpc, thread_id, pending, now)
         if quota_candidates and not self.should_stop():
@@ -564,7 +592,8 @@ class RetryEngine:
         if (not eligible(latest_thread) or failure_kind(latest_turn) != kind
                 or latest_turn["id"] != pending["turn_id"]
                 or latest_thread["model"] != pending["model"]
-                or latest_thread.get("reasoningEffort") != pending["effort"]):
+                or latest_thread.get("reasoningEffort") != pending["effort"]
+                or not same_control_context(latest_thread, pending)):
             self._cancel(thread_id, "session changed before retry")
             return
         if kind == "quota":
@@ -598,7 +627,8 @@ class RetryEngine:
             if (not eligible(latest_thread) or failure_kind(latest_turn) != kind
                     or latest_turn["id"] != pending["turn_id"]
                     or latest_thread["model"] != pending["model"]
-                    or latest_thread.get("reasoningEffort") != pending["effort"]):
+                    or latest_thread.get("reasoningEffort") != pending["effort"]
+                    or not same_control_context(latest_thread, pending)):
                 self._cancel(thread_id, "session changed before retry")
                 return
         if self.should_stop():
@@ -607,16 +637,38 @@ class RetryEngine:
         attempt = {"turn_id": pending["turn_id"], "at": now, "outcome": "uncertain",
                    "kind": kind,
                    "quota_at" if kind == "quota" else "capacity_at": pending.get("detected_at", now)}
+        if pending.get("control_backend") == "desktop-ipc":
+            attempt["client_message_id"] = str(uuid.uuid4())
+        previous_attempt = self.state["handled"].get(thread_id)
         self.state["handled"][thread_id] = attempt
         del self.state["pending"][thread_id]
         self.save(self.state)
         if self.should_stop():
             return
         try:
-            result = rpc.call("turn/start", {
+            parameters = {
                 "threadId": thread_id,
                 "input": [{"type": "text", "text": self.message}],
-            })
+            }
+            if "client_message_id" in attempt:
+                parameters["clientUserMessageId"] = attempt["client_message_id"]
+            result = rpc.call("turn/start", parameters)
+        except RetryDeferred:
+            self.state["pending"][thread_id] = pending
+            if previous_attempt is None:
+                self.state["handled"].pop(thread_id, None)
+            else:
+                self.state["handled"][thread_id] = previous_attempt
+            self._retry_after[thread_id] = now + min(30, self.scan_interval)
+            self.save(self.state)
+            self.emit("retry_deferred", thread_id=thread_id,
+                      reason="Desktop preflight is temporarily unavailable")
+            return
+        except RetryNotSubmitted:
+            attempt.update(outcome="cancelled", reason="Desktop state changed before submission")
+            self.save(self.state)
+            self.emit("cancelled", thread_id=thread_id, reason=attempt["reason"])
+            return
         except Exception:
             self.emit("uncertain", thread_id=thread_id, turn_id=attempt["turn_id"], kind=kind)
             raise
