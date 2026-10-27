@@ -187,7 +187,7 @@ before continuing it manually.
 
 ## Settings
 
-Choose **Retry every…** or **Check every…** directly from the menu. The checked choice is saved
+Choose **Retry Every** or **Check Every** directly from the menu. The checked choice is saved
 immediately. Defaults are three-minute capacity retries and five-minute checks. Existing custom intervals
 also remain visible. Changes apply without restarting Codex or changing the session's model settings.
 

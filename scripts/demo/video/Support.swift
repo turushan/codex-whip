@@ -292,9 +292,11 @@ func spokenDuration(_ seconds: Int) -> String {
     return "\(numberWord(seconds)) seconds"
 }
 
-/// The native menu's compact form: "3 min", "30 sec".
+/// The native menu's title-style form: "3 Minutes", "30 Seconds", "1 Hour".
 func menuDuration(_ seconds: Int) -> String {
-    seconds % 60 == 0 ? "\(seconds / 60) min" : "\(seconds) sec"
+    let (count, unit) = seconds % 3600 == 0 ? (seconds / 3600, "Hour")
+        : seconds % 60 == 0 ? (seconds / 60, "Minute") : (seconds, "Second")
+    return "\(count) \(unit)\(count == 1 ? "" : "s")"
 }
 
 /// 2:14 AM style clock text for minutes after midnight.

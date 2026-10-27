@@ -571,8 +571,8 @@ final class Director {
         return [
             MenuItem(title: "Watching 1 session", enabled: false), .line,
             MenuItem(title: "Pause"), MenuItem(title: "Start at Login", checked: true),
-            MenuItem(title: "Retry every \(menuDuration(s.retrySeconds))", submenu: true),
-            MenuItem(title: "Check every \(menuDuration(s.checkSeconds))", submenu: true),
+            MenuItem(title: "Retry Every \(menuDuration(s.retrySeconds))", submenu: true),
+            MenuItem(title: "Check Every \(menuDuration(s.checkSeconds))", submenu: true),
             MenuItem(title: "Retry Message: Default", submenu: true), .line,
             MenuItem(title: "Check for Updates…"), MenuItem(title: "Automatic Updates", checked: true), .line,
             MenuItem(title: "Activity"), MenuItem(title: "Watch Demo"), .line,
@@ -583,7 +583,7 @@ final class Director {
     /// native/Settings.swift's retry choices. The film runs on the defaults, so the default is also selected.
     private var retryChoices: [MenuItem] {
         [60, 120, 180, 300, 600, 900, 1800, 3600].map { value in
-            MenuItem(title: menuDuration(value) + (value == film.settings.retrySeconds ? " (default)" : ""),
+            MenuItem(title: menuDuration(value) + (value == film.settings.retrySeconds ? " (Default)" : ""),
                      checked: value == film.settings.retrySeconds)
         }
     }
@@ -594,7 +594,7 @@ final class Director {
         V2(menuOrigin.x - submenuWidth + 6, MenuArt.rowTop(menuItems, retryRowIndex, origin: menuOrigin) - 5 * MenuArt.scale)
     }
     /// The interval row the pointer opens, wherever it sits in the menu.
-    private var retryRowIndex: Int { menuItems.firstIndex { $0.title.hasPrefix("Retry every") }! }
+    private var retryRowIndex: Int { menuItems.firstIndex { $0.title.hasPrefix("Retry Every") }! }
 
     private func cursorPosition(_ t: Double) -> V2 {
         let glyph = MenuBar.glyphCenter() + V2(2, 2)

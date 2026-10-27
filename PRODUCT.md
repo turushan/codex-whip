@@ -20,7 +20,7 @@ The app is named Codex Whip; the command and repository are `codex-whip`.
 
 ## Confirmed constraints
 
-- One small menu with watching status, pause, start at login, Retry every, Check every, Retry Message, update controls, Activity, Watch Demo, and Quit Codex Whip.
+- One small menu with watching status, pause, start at login, Retry Every, Check Every, Retry Message, update controls, Activity, Watch Demo, and Quit Codex Whip.
 - Use a monochrome whip for the menu bar identity.
 - Default to five-minute checks and three-minute capacity retries. Native interval submenu selections apply immediately. Due retries and healthy-turn observations run independently of discovery cadence.
 - Resume supported usage-quota failures only after Codex explicitly permits ordinary usage again for the observed account. This covers regular and early renewals without a reset tracker. Unknown status/account changes hold retries; never consume credits or change accounts/models.

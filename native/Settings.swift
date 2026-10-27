@@ -15,9 +15,9 @@ final class PreferencesMenuController: NSObject, NSMenuDelegate {
     var items: [NSMenuItem] { [retryItem, scanItem, messageItem] }
 
     private let store: PreferencesStore
-    private let retryItem = NSMenuItem(title: "Retry Interval: Preparing…", action: nil, keyEquivalent: "")
-    private let scanItem = NSMenuItem(title: "Check Interval: Preparing…", action: nil, keyEquivalent: "")
-    private let messageItem = NSMenuItem(title: "Retry Message: Preparing…", action: nil, keyEquivalent: "")
+    private let retryItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+    private let scanItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+    private let messageItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let retryMenu = NSMenu(title: "Retry interval")
     private let scanMenu = NSMenu(title: "Check interval")
     private let messageMenu = NSMenu(title: "Retry message")
@@ -33,23 +33,23 @@ final class PreferencesMenuController: NSObject, NSMenuDelegate {
             menu.autoenablesItems = false
             menu.delegate = self
             item.submenu = menu
-            item.isEnabled = false
         }
+        // The titles keep one wording in every state. Until the saved file is
+        // read, they show the bundled defaults, disabled.
+        apply(store.defaults)
     }
 
     // Called as the menu opens, so preferences also reflect edits made by the CLI.
-    // This method never publishes a change back to its owner.
+    // Reading is local and changes nothing, so the titles follow settings.json even
+    // while the helper prepares; choices stay disabled until it is ready. After a
+    // failed read, the titles keep the last values read, disabled, and the main menu
+    // explains the error. This method never publishes a change back to its owner.
     func refresh() {
-        guard isReady else {
-            showUnavailable(preparing: true)
-            errorText = writeError
-            return
-        }
         do {
             apply(try store.read())
             errorText = writeError
         } catch {
-            showUnavailable(preparing: false)
+            for item in items { item.isEnabled = false }
             errorText = "Couldn’t read preferences. \(error.localizedDescription)"
         }
     }
@@ -79,18 +79,18 @@ final class PreferencesMenuController: NSObject, NSMenuDelegate {
             editor?.isReady = true
             editor?.present(message: saved.message)
         } catch {
-            showUnavailable(preparing: false)
+            for item in items { item.isEnabled = false }
             errorText = "Couldn’t read preferences. \(error.localizedDescription)"
             onChange?()
         }
     }
 
     private func apply(_ settings: RetrySettings) {
-        retryItem.title = "Retry every \(duration(settings.retrySeconds))"
-        scanItem.title = "Check every \(duration(settings.scanSeconds))"
+        retryItem.title = "Retry Every \(duration(settings.retrySeconds))"
+        scanItem.title = "Check Every \(duration(settings.scanSeconds))"
         let isDefault = settings.message == store.defaults.message
         messageItem.title = "Retry Message: \(isDefault ? "Default" : "Custom")"
-        for item in items { item.isEnabled = true }
+        for item in items { item.isEnabled = isReady }
         populate(retryMenu, choices: retryChoices, selected: settings.retrySeconds,
                  defaultValue: store.defaults.retrySeconds, action: #selector(selectRetry(_:)))
         populate(scanMenu, choices: scanChoices, selected: settings.scanSeconds,
@@ -134,7 +134,7 @@ final class PreferencesMenuController: NSObject, NSMenuDelegate {
     private func populate(_ menu: NSMenu, choices: [Int], selected: Int, defaultValue: Int, action: Selector) {
         menu.removeAllItems()
         for value in choices {
-            let title = duration(value) + (value == defaultValue ? " (default)" : "")
+            let title = duration(value) + (value == defaultValue ? " (Default)" : "")
             let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
             item.target = self
             item.representedObject = NSNumber(value: value)
@@ -143,7 +143,7 @@ final class PreferencesMenuController: NSObject, NSMenuDelegate {
         }
         if !choices.contains(selected) {
             menu.addItem(.separator())
-            let custom = NSMenuItem(title: "\(duration(selected)) (custom)", action: action, keyEquivalent: "")
+            let custom = NSMenuItem(title: "\(duration(selected)) (Custom)", action: action, keyEquivalent: "")
             custom.target = self
             custom.representedObject = NSNumber(value: selected)
             custom.state = .on
@@ -151,8 +151,11 @@ final class PreferencesMenuController: NSObject, NSMenuDelegate {
         }
     }
 
+    /// Title-style durations with spelled-out units: "15 Seconds", "1 Minute", "1 Hour".
     private func duration(_ seconds: Int) -> String {
-        seconds % 60 == 0 ? "\(seconds / 60) min" : "\(seconds) sec"
+        let (count, unit) = seconds % 3600 == 0 ? (seconds / 3600, "Hour")
+            : seconds % 60 == 0 ? (seconds / 60, "Minute") : (seconds, "Second")
+        return "\(count) \(unit)\(count == 1 ? "" : "s")"
     }
 
     // Keep menus small even when the saved message spans thousands of characters.
@@ -175,15 +178,6 @@ final class PreferencesMenuController: NSObject, NSMenuDelegate {
             lines.append(line + (lineNumber == 1 && !remaining.isEmpty ? "…" : ""))
         }
         return lines
-    }
-
-    private func showUnavailable(preparing: Bool) {
-        let state = preparing ? "Preparing…" : "Unavailable"
-        retryItem.title = "Retry Interval: \(state)"
-        scanItem.title = "Check Interval: \(state)"
-        messageItem.title = "Retry Message: \(state)"
-        for item in items { item.isEnabled = false }
-        for menu in [retryMenu, scanMenu, messageMenu] { menu.removeAllItems() }
     }
 
     private func update(_ mutate: (inout RetrySettings) -> Void) throws {

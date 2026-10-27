@@ -15,11 +15,13 @@ Export the blue tile with an opaque interior so macOS does not wrap the artwork 
 Retain transparent outer margins and the rounded silhouette for older macOS versions.
 
 The first lines answer whether retries are enabled, how many sessions are watched, and whether a retry
-is waiting. The actions are Pause/Resume, Start at Login, Retry every, Check every, Retry Message,
+is waiting. The actions are Pause/Resume, Start at Login, Retry Every, Check Every, Retry Message,
 update controls, Activity, Watch Demo, and Quit Codex Whip. Activity and Watch Demo only show
 information, so they take no ellipsis. Quit names the app and sits after its own separator.
 
-Retry every and Check every are native submenus with checked selections and labeled defaults.
+Retry Every and Check Every are native submenus with checked selections and labeled defaults.
+Their titles use title-style capitalization and spelled-out units, such as Retry Every 3 Minutes
+and 3 Minutes (Default). They keep that wording, disabled, while preferences load or cannot be read.
 Five-minute checks and three-minute capacity retries are the defaults; selections save immediately. Preserve
 valid custom intervals and show them as checked custom values when outside the preset choices.
 Retry Message: Default or Custom opens a preview bounded to two short lines, followed by Edit
