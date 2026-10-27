@@ -9,3 +9,11 @@ dist/
 *.sqlite3
 *.sqlite3-*
 *.log
+
+# Signing material never belongs in Git.
+*.p8
+*.p12
+*.pem
+*.cer
+*.certSigningRequest
+.env
