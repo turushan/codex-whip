@@ -233,18 +233,18 @@ enum ActivityWindow {
             ("Last 24 hours", head), ("", body),
             ("Capacity", head),
             ("Errors found: 1 · Retries sent: 1", body),
-            ("Successful: 1 · Failed: 0 (0 capacity, 0 other)", body),
+            ("Successful: 1 · Failed: 0", body),
             ("Interrupted: 0 · Awaiting recovery: 0", body),
             ("Uncertain sends: 0", body), ("", body),
             ("Quota recovery", head),
             ("Limits found: 2 · Retries sent: 2", body),
-            ("Successful: 2 · Failed: 0 (0 capacity, 0 other)", body),
+            ("Successful: 2 · Failed: 0", body),
             ("Interrupted: 0 · Awaiting recovery: 0", body),
             ("Uncertain sends: 0", body), ("", body),
             ("Success: 2 minutes without interruption, or a finished turn.", dim), ("", body),
             ("Recent activity", head),
         ]
-        lines += recent.map { ("Oct 27, 2026 at \(clockText($0.clock)) · 7f3a91c2 · \($0.label)", dim) }
+        lines += recent.map { ("Today at \(clockText($0.clock)) · 7f3a91c2 · \($0.label)", dim) }
         var y = f.minY + 84
         for (text, style) in lines {
             if !text.isEmpty { drawText(text, x: f.minX + 32, baseline: y, style) }

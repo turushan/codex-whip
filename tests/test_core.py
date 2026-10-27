@@ -598,6 +598,25 @@ class ReportingTests(unittest.TestCase):
         self.assertIn("2 minutes of continuously observed healthy activity", output.getvalue())
         self.assertIn("retry successful", output.getvalue())
 
+    def test_cli_report_names_sessions_by_the_end_of_their_ids(self):
+        # Neighboring sessions share a timestamp prefix; only the ending tells them apart.
+        report = {
+            **dict.fromkeys(QUOTA_COUNTERS, 0),
+            "available": True, "capacity": 2, "retries": 0, "successful": 0,
+            "failed": 0, "failed_capacity": 0, "failed_other": 0, "interrupted": 0,
+            "awaiting": 0, "uncertain": 0, "recorded_since": None,
+            "recent": [{"event": "capacity", "ts": 1200, "capacity": True,
+                        "thread_id": f"019a2b3c-4d5e-7f00-8a1b-00000000{suffix}"}
+                       for suffix in ("7f3a", "c2d9")],
+        }
+        output = io.StringIO()
+        with (mock.patch.object(capacity, "read_report", return_value=report),
+              contextlib.redirect_stdout(output)):
+            capacity.print_activity(Path("unused-test-directory"))
+        self.assertIn(" · 00007f3a · capacity error found", output.getvalue())
+        self.assertIn(" · 0000c2d9 · capacity error found", output.getvalue())
+        self.assertNotIn("019a2b3c", output.getvalue())
+
 
 class RecoverySuccessTests(unittest.TestCase):
     def setUp(self):

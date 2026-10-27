@@ -1302,7 +1302,8 @@ def print_activity(directory, hours=24, limit=5):
         if event.get("kind") == "quota" and event["event"] != "quota":
             label = "quota " + label
         timestamp = time.strftime("%m-%d %H:%M:%S", time.localtime(event["ts"]))
-        print(f"  {timestamp} · {event['thread_id'][:8]} · {label}")
+        # Session IDs begin with a timestamp, so their endings tell neighbors apart.
+        print(f"  {timestamp} · {event['thread_id'][-8:]} · {label}")
 
 
 def doctor(codex_home):

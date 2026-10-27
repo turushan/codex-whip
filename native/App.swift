@@ -347,7 +347,7 @@ private final class WorkerSupervisor {
     }
 }
 
-private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
+private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelegate {
     private var statusItem: NSStatusItem!
     private let menu = NSMenu()
     private var updateNoticeItem: NSMenuItem!
@@ -852,6 +852,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
             window.title = "\(appName) Activity"
             window.minSize = NSSize(width: 420, height: 280)
             window.isReleasedWhenClosed = false
+            window.delegate = self
             let scroll = NSScrollView(frame: window.contentView!.bounds)
             scroll.autoresizingMask = [.width, .height]
             scroll.hasVerticalScroller = true
@@ -881,31 +882,55 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
         refreshActivity()
     }
 
+    // Returning to the open report reloads it, as choosing Activity does.
+    func windowDidBecomeKey(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow, window === activityWindow else { return }
+        refreshDashboard()
+        refreshActivity()
+    }
+
+    private enum ActivityStyle { case heading, body, note }
+
     private func updateActivity() {
-        guard let text = activityText else { return }
-        var lines = ["Last 24 hours", ""]
+        guard let text = activityText, let storage = text.textStorage else { return }
+        var lines: [(String, ActivityStyle)] = [("Last 24 hours", .heading), ("", .body)]
         if let history = dashboard?.history, history.available != false {
+            func outcomes(successful: Int?, failed: Int?, capacity: Int?, other: Int?) -> String {
+                let failed = failed ?? 0
+                let causes = failed > 0 ? " (\(capacity ?? 0) capacity, \(other ?? 0) other)" : ""
+                return "Successful: \(successful ?? 0) · Failed: \(failed)\(causes)"
+            }
             lines += [
-                "Capacity",
-                "Errors found: \(history.capacity ?? 0) · Retries sent: \(history.retries ?? 0)",
-                "Successful: \(history.successful ?? history.completed ?? 0) · Failed: \(history.failed ?? 0) (\(history.failedCapacity ?? 0) capacity, \(history.failedOther ?? 0) other)",
-                "Interrupted: \(history.interrupted ?? 0) · Awaiting recovery: \(history.awaiting ?? 0)",
-                "Uncertain sends: \(history.uncertain ?? 0)",
-                "", "Quota recovery",
-                "Limits found: \(history.quota ?? 0) · Retries sent: \(history.quotaRetries ?? 0)",
-                "Successful: \(history.quotaSuccessful ?? history.quotaCompleted ?? 0) · Failed: \(history.quotaFailed ?? 0) (\(history.quotaFailedCapacity ?? 0) capacity, \(history.quotaFailedOther ?? 0) other)",
-                "Interrupted: \(history.quotaInterrupted ?? 0) · Awaiting recovery: \(history.quotaAwaiting ?? 0)",
-                "Uncertain sends: \(history.quotaUncertain ?? 0)",
-                "", "Success: 2 minutes without interruption, or a finished turn.",
+                ("Capacity", .heading),
+                ("Errors found: \(history.capacity ?? 0) · Retries sent: \(history.retries ?? 0)", .body),
+                (outcomes(successful: history.successful ?? history.completed, failed: history.failed,
+                          capacity: history.failedCapacity, other: history.failedOther), .body),
+                ("Interrupted: \(history.interrupted ?? 0) · Awaiting recovery: \(history.awaiting ?? 0)", .body),
+                ("Uncertain sends: \(history.uncertain ?? 0)", .body),
+                ("", .body), ("Quota recovery", .heading),
+                ("Limits found: \(history.quota ?? 0) · Retries sent: \(history.quotaRetries ?? 0)", .body),
+                (outcomes(successful: history.quotaSuccessful ?? history.quotaCompleted, failed: history.quotaFailed,
+                          capacity: history.quotaFailedCapacity, other: history.quotaFailedOther), .body),
+                ("Interrupted: \(history.quotaInterrupted ?? 0) · Awaiting recovery: \(history.quotaAwaiting ?? 0)", .body),
+                ("Uncertain sends: \(history.quotaUncertain ?? 0)", .body),
+                ("", .body), ("Success: 2 minutes without interruption, or a finished turn.", .note),
             ]
-            let formatter = DateFormatter()
-            formatter.dateStyle = .medium
-            formatter.timeStyle = .short
+            // "Today at 6:38 AM" opens an event line; "today at 6:00 AM" ends a sentence.
+            func formatter(_ context: Formatter.Context) -> DateFormatter {
+                let formatter = DateFormatter()
+                formatter.dateStyle = .medium
+                formatter.timeStyle = .short
+                formatter.doesRelativeDateFormatting = true
+                formatter.formattingContext = context
+                return formatter
+            }
             if let since = history.recordedSince, since > Date().timeIntervalSince1970 - 86400 {
-                lines += ["", "Recording since \(formatter.string(from: Date(timeIntervalSince1970: since)))"]
+                let start = formatter(.middleOfSentence).string(from: Date(timeIntervalSince1970: since))
+                lines += [("", .body), ("Recording since \(start)", .note)]
             }
             let recent = history.recent ?? []
-            lines += ["", recent.isEmpty ? "No activity yet." : "Recent activity"]
+            lines += [("", .body), recent.isEmpty ? ("No activity yet.", .note) : ("Recent activity", .heading)]
+            let eventDate = formatter(.beginningOfSentence)
             for event in recent {
                 let label: String
                 let origin = event.kind == "quota" ? "Quota" : "Capacity"
@@ -918,30 +943,40 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
                     if event.status == "successful" || event.status == "completed" {
                         label = "\(origin) retry successful"
                     } else {
-                        label = "\(origin) retry \(event.status ?? "finished")" + (event.capacity == true ? " (capacity)" : "")
+                        label = "\(origin) retry \(event.status ?? "finished")"
+                            + (event.capacity == true ? " (model at capacity)" : "")
                     }
                 default: continue
                 }
-                let timestamp = event.ts.map { formatter.string(from: Date(timeIntervalSince1970: $0)) } ?? ""
-                let session = event.threadId.map { String($0.prefix(8)) } ?? ""
-                lines.append("\(timestamp) · \(session) · \(label)")
+                let timestamp = event.ts.map { eventDate.string(from: Date(timeIntervalSince1970: $0)) } ?? ""
+                // Session IDs begin with a timestamp, so their endings tell neighbors apart.
+                let session = event.threadId.map { String($0.suffix(8)) } ?? ""
+                lines.append(("\(timestamp) · \(session) · \(label)", .note))
             }
         } else if activityLoading {
-            lines.append("Loading activity…")
+            lines.append(("Loading activity…", .note))
         } else {
-            lines.append("Activity will appear after the helper starts.")
+            lines.append(("Activity will appear after the helper starts.", .note))
         }
         if activityLoading && dashboard?.history != nil {
-            lines += ["", "Updating activity…"]
+            lines += [("", .body), ("Updating activity…", .note)]
         }
         if let error = activityError {
-            lines += ["", "Activity could not be loaded: \(error)"]
+            lines += [("", .body), ("Activity could not be loaded: \(error)", .body)]
         }
         if let error = helperError ?? dashboardError ?? dashboard?.state?.lastError {
-            lines += ["", "Status: \(error)"]
+            lines += [("", .body), ("Status: \(error)", .body)]
         }
-        let content = lines.joined(separator: "\n")
-        if text.string != content { text.string = content }
+        let size = NSFont.systemFontSize
+        let report = NSMutableAttributedString()
+        for (index, (line, style)) in lines.enumerated() {
+            let attributes: [NSAttributedString.Key: Any] = [
+                .font: style == .heading ? NSFont.systemFont(ofSize: size, weight: .semibold) : NSFont.systemFont(ofSize: size),
+                .foregroundColor: style == .note ? NSColor.secondaryLabelColor : NSColor.labelColor,
+            ]
+            report.append(NSAttributedString(string: index == 0 ? line : "\n" + line, attributes: attributes))
+        }
+        if !storage.isEqual(to: report) { storage.setAttributedString(report) }
     }
 
     @objc private func quit() {
