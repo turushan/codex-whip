@@ -67,4 +67,6 @@ The app and DMG appear in `dist/`. [Full build and release guide](docs/RELEASING
 
 [How it works & compatibility](docs/INSTALL.md#what-gets-retried) · [Settings & privacy](docs/INSTALL.md#activity-and-local-files) · [MIT license](LICENSE)
 
+[Experimental Desktop connector](docs/DESKTOP.md) · Explicit conversation selection; capacity retries only.
+
 An unofficial Codex CLI companion. Requires its shared local daemon. Model availability still depends on OpenAI.

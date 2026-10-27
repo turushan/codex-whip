@@ -1,6 +1,6 @@
 # Desktop prototype
 
-This worktree includes an opt-in, command-line Desktop connector. The installed
+The source includes an opt-in, command-line Desktop connector. The installed
 menu bar app continues to watch terminal sessions.
 
 It requires the running macOS Desktop app, Codex CLI's shared local daemon, and
