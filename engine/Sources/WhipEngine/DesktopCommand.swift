@@ -7,6 +7,26 @@ import Foundation
 /// separate journal; it never installs a login item or changes the app's settings or state.
 /// Desktop quota recovery remains unsupported.
 public enum DesktopCommand {
+    /// The watcher's connections, files, clock and stop condition. `live` is the real process.
+    public struct Hooks {
+        public var env = ServiceEnvironment.live
+        public var makeMetadata: (URL, @escaping () -> Bool) throws -> RPCClient = { try WebSocketRPC(path: $0, shouldStop: $1) }
+        public var makeBackend: (URL, RPCClient, [String], @escaping () -> Bool) throws -> RPCClient = {
+            try DesktopRPC(socketPath: $0, metadata: $1, threadIDs: $2, shouldStop: $3)
+        }
+        public var makeHistory: (URL) throws -> History = { try History(directory: $0) }
+        public var makeSound: () -> RetrySound = { RetrySound() }
+        public var sleep: (Double) -> Void = { usleep(useconds_t($0 * 1_000_000)) }
+        public var now: () -> Double = { Date().timeIntervalSince1970 }
+        public var monotonic: () -> Double = WhipEngine.monotonic
+        /// An extra stop condition, checked with the signal flag.
+        public var stopRequested: () -> Bool = { false }
+        public var handleSignals = true
+
+        public init() {}
+        public static var live: Hooks { Hooks() }
+    }
+
     static let usage = """
         usage: codex-whip desktop --thread CONVERSATION_ID {doctor,watch} [--state-dir DIR] [--once]
 
@@ -42,9 +62,8 @@ public enum DesktopCommand {
 
     /// Returns whether the last step finished without a held or failed check.
     public static func watch(directory: URL, codexHome: URL, threadID: String, once: Bool = false,
-                             makeBackend: ((URL, RPCClient, [String], @escaping () -> Bool) throws -> RPCClient)? = nil,
-                             makeMetadata: ((URL, @escaping () -> Bool) throws -> RPCClient)? = nil) throws -> Bool {
-        if Paths.resolve(directory.path) == Paths.resolve(Paths.defaultStateDirectory.path) {
+                             hooks: Hooks = .live) throws -> Bool {
+        if Paths.resolve(directory.path) == Paths.resolve(hooks.env.defaultStateDirectory.path) {
             throw WhipError("The Desktop prototype requires a separate state directory.")
         }
         let statePath = directory.appendingPathComponent("state.json")
@@ -64,7 +83,7 @@ public enum DesktopCommand {
         defer { close(lock) }
         guard flock(lock, LOCK_EX | LOCK_NB) == 0 else { throw WhipError("This Desktop watcher is already running.") }
         let existing = manager.fileExists(atPath: statePath.path)
-        let state = existing ? try RetryState.read(statePath) : RetryState(threads: [threadID])
+        let state = existing ? try RetryState.read(statePath) : RetryState(enabledAt: hooks.now(), threads: [threadID])
         guard state.threads == [threadID], !existing || state.controlBackend == "desktop-ipc" else {
             throw WhipError("This journal belongs to another Desktop scope.")
         }
@@ -78,7 +97,7 @@ public enum DesktopCommand {
         let stopping = StopFlag()
         var sources: [DispatchSourceSignal] = []
         var previous: [Int32: sig_t?] = [:]
-        for number in [SIGINT, SIGTERM] {
+        for number in hooks.handleSignals ? [SIGINT, SIGTERM] : [] {
             previous[number] = signal(number, SIG_IGN)
             let source = DispatchSource.makeSignalSource(signal: number, queue: .global(qos: .userInitiated))
             source.setEventHandler { stopping.set() }
@@ -89,9 +108,9 @@ public enum DesktopCommand {
             sources.forEach { $0.cancel() }
             for (number, handler) in previous { signal(number, handler ?? SIG_DFL) }
         }
-        let history = try History(directory: directory)
+        let history = try hooks.makeHistory(directory)
         defer { history.close() }
-        let audio = RetrySound()
+        let audio = hooks.makeSound()
         defer { audio.close() }
         let logURL = directory.appendingPathComponent("worker.log")
         if !manager.fileExists(atPath: logURL.path) {
@@ -106,7 +125,7 @@ public enum DesktopCommand {
             log.write(event, fields)
             audio.report(event)
         }
-        let shouldStop: () -> Bool = { stopping.isSet }
+        let shouldStop: () -> Bool = { stopping.isSet || hooks.stopRequested() }
         let engine = try RetryEngine(state: state, save: { try $0.write(statePath) }, emit: report,
                                      threads: [threadID], shouldStop: shouldStop)
         var scheduler = ScanScheduler()
@@ -114,55 +133,55 @@ public enum DesktopCommand {
         var metadata: RPCClient?
         var backend: RPCClient?
         func closeConnections() {
-            (backend as? DesktopRPC)?.close()
-            (metadata as? WebSocketRPC)?.close()
+            backend?.close()
+            metadata?.close()
             backend = nil
             metadata = nil
         }
         defer { closeConnections() }
-        while !stopping.isSet {
+        while !shouldStop() {
             let settings = try Settings.read(directory: directory)
             try engine.applySettings(settings)
             audio.configure(settings.soundEnabled)
-            if monotonic() < reconnectAfter {
+            if hooks.monotonic() < reconnectAfter {
                 if once { break }
-                usleep(500_000)
+                hooks.sleep(0.5)
                 continue
             }
-            let discovery = scheduler.due(monotonic(), interval: settings.scanSeconds)
-            if discovery || engine.maintenanceDue(Date().timeIntervalSince1970) {
+            let discovery = scheduler.due(hooks.monotonic(), interval: settings.scanSeconds)
+            if discovery || engine.maintenanceDue(hooks.now()) {
                 do {
                     if metadata == nil {
                         let socket = try resolveSocket(codexHome)
-                        let opened = try makeMetadata?(socket, shouldStop) ?? WebSocketRPC(path: socket, shouldStop: shouldStop)
+                        let opened = try hooks.makeMetadata(socket, shouldStop)
                         metadata = opened
-                        let ipcPath = codexHome.appendingPathComponent("ipc/ipc.sock")
-                        backend = try makeBackend?(ipcPath, opened, [threadID], shouldStop)
-                            ?? DesktopRPC(socketPath: ipcPath, metadata: opened, threadIDs: [threadID], shouldStop: shouldStop)
+                        backend = try hooks.makeBackend(codexHome.appendingPathComponent("ipc/ipc.sock"), opened,
+                                                        [threadID], shouldStop)
                     }
-                    try reconcileHistory(state, history, now: Date().timeIntervalSince1970)
+                    try reconcileHistory(state, history, now: hooks.now())
                     stepHeld = false
-                    try engine.step(backend!, now: Date().timeIntervalSince1970, discover: discovery)
+                    try engine.step(backend!, now: hooks.now(), discover: discovery)
                     state.lastError = stepHeld ? "Desktop's saved turn cannot be verified; retries remain on hold." : nil
-                    if discovery { state.lastScanAt = Date().timeIntervalSince1970 }
+                    if discovery { state.lastScanAt = hooks.now() }
                 } catch let error as RPCError where error.kind == .cancelled {
                     break
                 } catch {
                     state.lastError = "Desktop checking is unavailable; retries remain on hold."
                     try? engine.resetObservations()
                     closeConnections()
-                    reconnectAfter = monotonic() + min(30, Double(settings.scanSeconds))
+                    reconnectAfter = hooks.monotonic() + min(30, Double(settings.scanSeconds))
                 }
                 try state.write(statePath)
-                if discovery { scheduler.finished(monotonic()) }
+                if discovery { scheduler.finished(hooks.monotonic()) }
             }
             if once { break }
-            usleep(500_000)
+            hooks.sleep(0.5)
         }
         return state.lastError == nil
     }
 
-    static func main(_ arguments: [String], codexHome: URL, stdout: (String) -> Void, stderr: (String) -> Void) -> Int32 {
+    public static func main(_ arguments: [String], codexHome: URL, hooks: Hooks = .live,
+                            stdout: (String) -> Void, stderr: (String) -> Void) -> Int32 {
         var thread: String?
         var command: String?
         var stateDirectory: String?
@@ -207,19 +226,19 @@ public enum DesktopCommand {
         }
         do {
             if command == "doctor" {
-                let metadata = try WebSocketRPC(path: resolveSocket(codexHome))
+                let metadata = try hooks.makeMetadata(resolveSocket(codexHome), { false })
                 defer { metadata.close() }
-                let backend = try DesktopRPC(socketPath: codexHome.appendingPathComponent("ipc/ipc.sock"),
-                                             metadata: metadata, threadIDs: [thread])
-                defer { backend.close() }
+                let client = try hooks.makeBackend(codexHome.appendingPathComponent("ipc/ipc.sock"), metadata, [thread], { false })
+                defer { client.close() }
+                guard let backend = client as? DesktopRPC else { throw WhipError("The Desktop doctor needs the Desktop backend.") }
                 stdout(try diagnostic(backend, thread).serialized(.pretty))
                 return 0
             }
             let scope = SHA256.hash(data: Data(thread.utf8)).map { String(format: "%02x", $0) }.joined().prefix(16)
             let directory = stateDirectory.map { Paths.resolve($0) }
-                ?? Paths.home.appendingPathComponent("Library/Application Support/Codex Whip Desktop Prototype/\(scope)")
+                ?? hooks.env.home.appendingPathComponent("Library/Application Support/Codex Whip Desktop Prototype/\(scope)")
             stderr("Watching one selected Desktop conversation. Quota recovery stays on hold. Stop with Ctrl-C.")
-            return try watch(directory: directory, codexHome: codexHome, threadID: thread, once: once) ? 0 : 1
+            return try watch(directory: directory, codexHome: codexHome, threadID: thread, once: once, hooks: hooks) ? 0 : 1
         } catch {
             stderr("Desktop prototype unavailable. Check the app, selected conversation, and local daemon.")
             return 1

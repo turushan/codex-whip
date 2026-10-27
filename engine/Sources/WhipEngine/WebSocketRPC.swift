@@ -256,6 +256,6 @@ public final class WebSocketRPC: RPCClient {
     }
 }
 
-func monotonic() -> Double {
+public func monotonic() -> Double {
     Double(clock_gettime_nsec_np(CLOCK_UPTIME_RAW)) / 1_000_000_000
 }

@@ -39,6 +39,12 @@ public struct RPCError: Error, CustomStringConvertible, LocalizedError {
 /// One Codex connection: the terminal daemon's control socket, or the Desktop facade.
 public protocol RPCClient: AnyObject {
     func call(_ method: String, _ params: JSON) throws -> JSON
+    /// Releases the connection. The owner calls it once, when it stops using the client.
+    func close()
+}
+
+extension RPCClient {
+    public func close() {}
 }
 
 extension JSON {

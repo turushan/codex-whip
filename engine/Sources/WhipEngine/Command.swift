@@ -111,7 +111,8 @@ public enum Command {
                 try Service.stopService()
                 stdout("Stopped. Automatic retries and start at login are disabled.")
             case "status":
-                try Service.status(directory: directory, output: stdout)
+                try Service.status(directory: directory, activity: { try Service.printActivity(directory: directory, output: $0) },
+                                   output: stdout)
             case "doctor":
                 try Service.doctor(codexHome: home, output: stdout)
             case "report":

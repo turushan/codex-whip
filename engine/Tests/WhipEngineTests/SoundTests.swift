@@ -223,11 +223,8 @@ final class SoundQuotaRPC: SoundFakeRPC {
         #expect(called.played == [soundFile, soundFile])
     }
 
-    // test_thread_start_failure_preserves_the_accepted_retry_and_allows_later_audio
-    // NEEDS SEAM: RetrySound dispatches onto a private DispatchQueue (Support.swift, `queue.async`);
-    // Python patched threading.Thread.start to fail. Injecting the dispatcher would let this run.
-    @Test(.disabled("NEEDS SEAM: RetrySound queue dispatch cannot be made to fail"))
-    func threadStartFailurePreservesTheAcceptedRetryAndAllowsLaterAudio() throws {}
+    // test_thread_start_failure_preserves_the_accepted_retry_and_allows_later_audio is not ported:
+    // Swift plays through a dispatch queue, which cannot fail to start the way a Python thread can.
 
     // test_bundled_clip_is_short_original_pcm_and_player_uses_current_output_volume (file half)
     @Test func bundledClipIsShortOriginalPCM() throws {
@@ -260,16 +257,14 @@ final class SoundQuotaRPC: SoundFakeRPC {
     }
 
     // test_bundled_clip_is_short_original_pcm_and_player_uses_current_output_volume (player half)
-    // NEEDS SEAM: RetrySound.play builds and runs a Process directly (Support.swift); Python patched
-    // subprocess.run to check ["/usr/bin/afplay", "-v", "0.4", path] with timeout 2. Injecting a
-    // process runner would let this run without playing audio.
-    @Test(.disabled("NEEDS SEAM: RetrySound.play runs afplay with no injectable runner"))
-    func playerUsesCurrentOutputVolume() throws {}
+    // test_bundled_clip_is_short_original_pcm_and_player_uses_current_output_volume (player half)
+    @Test func playerUsesCurrentOutputVolume() throws {
+        let file = URL(fileURLWithPath: "/tmp/whip.wav")
+        let command = RetrySound.playCommand(file)
+        #expect(command.executable == "/usr/bin/afplay")
+        #expect(command.arguments == ["-v", "0.4", file.path])
+        #expect(command.timeout == 2)
+    }
 
-    // WorkerSoundTests.test_saved_sound_toggle_is_live_and_only_new_submissions_sound
-    // NEEDS SEAM: runWorker (Worker.swift) constructs RetrySound(), History, EventLog, WebSocketRPC and
-    // resolveSocket itself and reads the real clock and sleep; Python patched all of them plus
-    // signal.signal and configured_parent_pid. Injecting the sound, RPC factory, clock and sleep would let it run.
-    @Test(.disabled("NEEDS SEAM: runWorker has no injectable sound, RPC, clock or sleep"))
-    func savedSoundToggleIsLiveAndOnlyNewSubmissionsSound() throws {}
+    // WorkerSoundTests.test_saved_sound_toggle_is_live_and_only_new_submissions_sound is in WorkerLoopTests.swift.
 }

@@ -73,9 +73,11 @@ private final class RunnerHarness {
     }
 
     func watch(directory: URL? = nil, once: Bool = true) throws -> Bool {
-        try DesktopCommand.watch(directory: directory ?? self.directory, codexHome: home, threadID: "thread", once: once,
-                                 makeBackend: { [unowned self] in try self.backendFactory($0, $1, $2, $3) },
-                                 makeMetadata: { [unowned self] in try self.metadataFactory($0, $1) })
+        var hooks = DesktopCommand.Hooks()
+        hooks.makeBackend = { [unowned self] in try self.backendFactory($0, $1, $2, $3) }
+        hooks.makeMetadata = { [unowned self] in try self.metadataFactory($0, $1) }
+        return try DesktopCommand.watch(directory: directory ?? self.directory, codexHome: home, threadID: "thread",
+                                        once: once, hooks: hooks)
     }
 
     @discardableResult

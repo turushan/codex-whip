@@ -444,17 +444,4 @@ private final class QuotaFixture {
     }
 }
 
-@Suite struct WorkerDeadlineTests {
-    // test_due_retry_connection_failures_use_backoff_instead_of_reconnecting_each_second
-    // NEEDS SEAM: runWorker(directory:codexHome:) constructs WebSocketRPC(path:shouldStop:) directly and uses
-    // the real wall clock, monotonic(), sleep(1) and signal sources. Inject a connection factory, a clock
-    // (time and monotonic), a sleep function and a stop trigger to port this test.
-    @Test(.disabled("NEEDS SEAM: runWorker has no injectable connection factory, clock, sleep, or stop signal"))
-    func dueRetryConnectionFailuresUseBackoffInsteadOfReconnectingEachSecond() {}
-
-    // test_capacity_deadline_runs_before_next_five_minute_discovery_without_extra_quota_poll
-    // NEEDS SEAM: same as above. runWorker also builds its own History and Settings.read; inject an
-    // RPCClient factory returning the stub, a clock, a sleep function and a stop trigger.
-    @Test(.disabled("NEEDS SEAM: runWorker has no injectable connection factory, clock, sleep, or stop signal"))
-    func capacityDeadlineRunsBeforeNextFiveMinuteDiscoveryWithoutExtraQuotaPoll() {}
-}
+// The worker-loop deadline tests are in WorkerLoopTests.swift.

@@ -121,7 +121,7 @@ public func runWorker(directory: URL, codexHome: URL, hooks: WorkerHooks = .live
     report("started", ["threads": state.threads.isEmpty ? "loaded terminal sessions" : .array(state.threads.map(JSON.string))])
     defer {
         sound.close()
-        (rpc as? WebSocketRPC)?.close()
+        rpc?.close()
         try? FileManager.default.removeItem(at: directory.appendingPathComponent("worker.pid"))
         report("stopped", [:])
         history.close()
@@ -180,7 +180,7 @@ public func runWorker(directory: URL, codexHome: URL, hooks: WorkerHooks = .live
             state.lastError = message
             if message != lastError { report("connection_error", ["message": .string(message)]) }
             lastError = message
-            (rpc as? WebSocketRPC)?.close()
+            rpc?.close()
             rpc = nil
             reconnectAfter = hooks.monotonic() + min(30, Double(current.scanSeconds))
         }

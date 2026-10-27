@@ -299,7 +299,7 @@ private func mode(_ url: URL) throws -> Int {
         defer { close(lock) }
         // The held lock is what keeps startService away from launchctl; prove it first.
         try #require(workerRunning(sandbox.directory))
-        let command = Service.commandLink()
+        let command = ServiceEnvironment.live.commandLink
         let linkBefore = Service.exists(command)
         let agentBefore = FileManager.default.fileExists(atPath: Paths.agentPath.path)
         let output = Lines()

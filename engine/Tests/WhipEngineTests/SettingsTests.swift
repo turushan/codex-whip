@@ -348,16 +348,4 @@ private final class EngineSettingsFixture {
     }
 }
 
-@Suite struct WorkerSettingsTests {
-    // test_invalid_live_settings_pause_scans_until_repaired_without_losing_retry_state
-    // NEEDS SEAM: runWorker(directory:codexHome:) calls Settings.read, constructs RetryEngine, History and
-    // WebSocketRPC itself, and uses the real clock, monotonic(), sleep(1) and signal sources. Inject a settings
-    // reader, an engine (or step observer), an RPCClient factory, a clock, a sleep function and a stop trigger.
-    @Test(.disabled("NEEDS SEAM: runWorker has no injectable settings reader, engine, connection factory, clock, or sleep"))
-    func invalidLiveSettingsPauseScansUntilRepairedWithoutLosingRetryState() {}
-
-    // test_live_changes_are_polled_each_second_without_exceeding_scan_cadence
-    // NEEDS SEAM: same seams as above; the test also counts Settings.read calls and applySettings arguments.
-    @Test(.disabled("NEEDS SEAM: runWorker has no injectable settings reader, engine, connection factory, clock, or sleep"))
-    func liveChangesArePolledEachSecondWithoutExceedingScanCadence() {}
-}
+// The worker-loop settings tests are in WorkerLoopTests.swift.

@@ -1,5 +1,43 @@
 import Foundation
 
+/// The home folder, launchd and clock the service code uses. `live` is this user's real Mac;
+/// tests use a temporary home and a recording launchctl, so they never touch real login jobs.
+public struct ServiceEnvironment {
+    public var home: URL
+    public var variables: [String: String]
+    public var launchctl: ([String]) -> (status: Int32, error: String)
+    public var monotonic: () -> Double
+    public var sleep: (Double) -> Void
+    public var executable: () -> URL
+
+    public init(home: URL, variables: [String: String] = [:],
+                launchctl: @escaping ([String]) -> (status: Int32, error: String) = Service.runLaunchctl,
+                monotonic: @escaping () -> Double = WhipEngine.monotonic,
+                sleep: @escaping (Double) -> Void = { usleep(useconds_t($0 * 1_000_000)) },
+                executable: @escaping () -> URL = Paths.currentExecutable) {
+        self.home = home
+        self.variables = variables
+        self.launchctl = launchctl
+        self.monotonic = monotonic
+        self.sleep = sleep
+        self.executable = executable
+    }
+
+    public static var live: ServiceEnvironment {
+        ServiceEnvironment(home: Paths.home, variables: ProcessInfo.processInfo.environment)
+    }
+
+    public var defaultStateDirectory: URL {
+        home.appendingPathComponent("Library/Application Support/Codex Whip", isDirectory: true)
+    }
+    public var defaultCodexHome: URL {
+        if let value = variables["CODEX_HOME"], !value.isEmpty { return URL(fileURLWithPath: Paths.expandTilde(value)) }
+        return home.appendingPathComponent(".codex", isDirectory: true)
+    }
+    public var agentPath: URL { home.appendingPathComponent("Library/LaunchAgents/\(Paths.label).plist") }
+    public var commandLink: URL { home.appendingPathComponent(".local/bin/codex-whip") }
+}
+
 /// Preparing state for the app, the read-only dashboard, and the optional CLI launch job.
 public enum Service {
     public static func initialState(threads: [String] = []) -> RetryState {
@@ -7,7 +45,7 @@ public enum Service {
     }
 
     /// Reads the CLI launch job's effective paths without changing it.
-    public static func cliJobPaths(_ url: URL) throws -> (stateDirectory: URL, codexHome: URL) {
+    public static func cliJobPaths(_ url: URL, env: ServiceEnvironment = .live) throws -> (stateDirectory: URL, codexHome: URL) {
         do {
             let data = try Data(contentsOf: url)
             guard let job = try PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any],
@@ -43,8 +81,8 @@ public enum Service {
                 }
                 return Paths.resolve(expanded, relativeTo: working)
             }
-            return (try argument("--state-dir", Paths.defaultStateDirectory.path),
-                    try argument("--codex-home", environment["CODEX_HOME"] ?? Paths.home.appendingPathComponent(".codex").path))
+            return (try argument("--state-dir", env.defaultStateDirectory.path),
+                    try argument("--codex-home", environment["CODEX_HOME"] ?? env.home.appendingPathComponent(".codex").path))
         } catch {
             throw WhipError("Cannot safely read the existing CLI launch job. Keep that service, or stop it explicitly "
                 + "before setting up the app. Its launch file and saved state were left intact.")
@@ -52,25 +90,25 @@ public enum Service {
     }
 
     /// Prepares the native worker's state, taking over from a CLI job that uses the same directory.
-    public static func prepareState(directory given: URL, codexHome: URL? = nil) throws {
+    public static func prepareState(directory given: URL, codexHome: URL? = nil, env: ServiceEnvironment = .live) throws {
         let directory = Paths.resolve(given.path)
-        if directory == Paths.resolve(Paths.defaultStateDirectory.path) {
+        if directory == Paths.resolve(env.defaultStateDirectory.path) {
             if FileManager.default.fileExists(atPath: directory.path) { _ = try Settings.read(directory: directory) }
-            if FileManager.default.fileExists(atPath: Paths.agentPath.path) {
-                let job = try cliJobPaths(Paths.agentPath)
-                let target = Paths.resolve((codexHome ?? Paths.defaultCodexHome).path)
+            if FileManager.default.fileExists(atPath: env.agentPath.path) {
+                let job = try cliJobPaths(env.agentPath, env: env)
+                let target = Paths.resolve((codexHome ?? env.defaultCodexHome).path)
                 guard job.stateDirectory == directory, job.codexHome == target else {
                     throw WhipError("The existing CLI job uses a different state directory or Codex home. Keep that "
                         + "service, or stop it explicitly before setting up the app separately. "
                         + "Its launch file and saved state were left intact.")
                 }
-                try stopService()
-                let limit = monotonic() + 15
+                try stopService(env: env)
+                let limit = env.monotonic() + 15
                 while workerRunning(directory) {
-                    guard monotonic() < limit else { throw WhipError("The previous CLI worker is still stopping. Try again shortly.") }
-                    usleep(100_000)
+                    guard env.monotonic() < limit else { throw WhipError("The previous CLI worker is still stopping. Try again shortly.") }
+                    env.sleep(0.1)
                 }
-            } else if serviceRunning() {
+            } else if serviceRunning(env: env) {
                 throw WhipError("A CLI job is running, but its launch file is unavailable, so its configuration is "
                     + "unknown. Keep that service, or stop it explicitly before setting up the app.")
             }
@@ -93,8 +131,7 @@ public enum Service {
 
     // MARK: launchd
 
-    @discardableResult
-    static func launchctl(_ arguments: [String]) -> (status: Int32, error: String) {
+    public static func runLaunchctl(_ arguments: [String]) -> (status: Int32, error: String) {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/launchctl")
         process.arguments = arguments
@@ -109,24 +146,22 @@ public enum Service {
 
     static var domain: String { "gui/\(getuid())" }
 
-    public static func serviceRunning() -> Bool {
-        launchctl(["print", "\(domain)/\(Paths.label)"]).status == 0
+    public static func serviceRunning(env: ServiceEnvironment = .live) -> Bool {
+        env.launchctl(["print", "\(domain)/\(Paths.label)"]).status == 0
     }
 
-    public static func stopService() throws {
-        let result = launchctl(["bootout", "\(domain)/\(Paths.label)"])
-        if result.status != 0 && serviceRunning() {
+    public static func stopService(env: ServiceEnvironment = .live) throws {
+        let result = env.launchctl(["bootout", "\(domain)/\(Paths.label)"])
+        if result.status != 0 && serviceRunning(env: env) {
             throw WhipError(result.error.isEmpty ? "Could not stop launch agent" : result.error)
         }
-        try? FileManager.default.removeItem(at: Paths.agentPath)
-        let limit = monotonic() + 15
-        while serviceRunning() {
-            guard monotonic() < limit else { throw WhipError("Login job removed, but worker is still stopping. Check status shortly.") }
-            usleep(100_000)
+        try? FileManager.default.removeItem(at: env.agentPath)
+        let limit = env.monotonic() + 15
+        while serviceRunning(env: env) {
+            guard env.monotonic() < limit else { throw WhipError("Login job removed, but worker is still stopping. Check status shortly.") }
+            env.sleep(0.1)
         }
     }
-
-    static func commandLink() -> URL { Paths.home.appendingPathComponent(".local/bin/codex-whip") }
 
     static func isSymlink(_ url: URL) -> Bool {
         (try? FileManager.default.destinationOfSymbolicLink(atPath: url.path)) != nil
@@ -136,8 +171,8 @@ public enum Service {
         FileManager.default.fileExists(atPath: url.path) || isSymlink(url)
     }
 
-    public static func checkCommandTarget(_ script: URL) throws -> URL {
-        let command = commandLink()
+    public static func checkCommandTarget(_ script: URL, env: ServiceEnvironment = .live) throws -> URL {
+        let command = env.commandLink
         if exists(command) && !(isSymlink(command) && Paths.resolve(command.path) == script) {
             throw WhipError("Refusing to replace an existing command: \(command.path)")
         }
@@ -146,18 +181,18 @@ public enum Service {
 
     /// Installs ~/.local/bin/codex-whip and a user LaunchAgent that starts at login.
     public static func startService(directory: URL, codexHome: URL, threads: [String], preserveState: Bool,
-                                    output: (String) -> Void) throws {
+                                    env: ServiceEnvironment = .live, output: (String) -> Void) throws {
         if workerRunning(directory) {
             output("Already enabled. Use codex-whip status; native app workers are managed from the app menu.")
             return
         }
-        let script = Paths.currentExecutable()
-        if serviceRunning() {
+        let script = env.executable()
+        if serviceRunning(env: env) {
             output("Already enabled. Use codex-whip status or stop.")
             return
         }
-        _ = try checkCommandTarget(script)
-        try prepareState(directory: directory, codexHome: codexHome)
+        _ = try checkCommandTarget(script, env: env)
+        try prepareState(directory: directory, codexHome: codexHome, env: env)
         let statePath = directory.appendingPathComponent("state.json")
         let state: RetryState
         if preserveState && FileManager.default.fileExists(atPath: statePath.path) {
@@ -168,7 +203,7 @@ public enum Service {
         }
         try state.write(statePath)
         // Keep executables outside this user's usual PATH untouched.
-        let command = commandLink()
+        let command = env.commandLink
         try FileManager.default.createDirectory(at: command.deletingLastPathComponent(), withIntermediateDirectories: true)
         if isSymlink(command) && Paths.resolve(command.path) == script {
             // Already linked to this executable.
@@ -196,11 +231,11 @@ public enum Service {
             "Umask": 0o077,
             "ProcessType": "Background",
         ]
-        let plist = Paths.agentPath
+        let plist = env.agentPath
         try FileManager.default.createDirectory(at: plist.deletingLastPathComponent(), withIntermediateDirectories: true)
         try PropertyListSerialization.data(fromPropertyList: agent, format: .xml, options: 0).write(to: plist)
         chmod(plist.path, 0o600)
-        let result = launchctl(["bootstrap", domain, plist.path])
+        let result = env.launchctl(["bootstrap", domain, plist.path])
         if result.status != 0 {
             try? FileManager.default.removeItem(at: plist)
             throw WhipError(result.error.isEmpty ? "Could not start launch agent" : result.error)
@@ -235,18 +270,23 @@ public enum Service {
 
     // MARK: Text reports
 
-    public static func status(directory: URL, now: Double = Date().timeIntervalSince1970, output: (String) -> Void) throws {
+    /// Prints what the watcher is doing from the saved journal, which it only reads.
+    public static func status(directory: URL, now: Double = Date().timeIntervalSince1970,
+                              serviceRunning: () -> Bool = { Service.serviceRunning() },
+                              activity: ((String) -> Void) throws -> Void = { try printActivity(directory: Paths.defaultStateDirectory, output: $0) },
+                              output: (String) -> Void) throws {
         let path = directory.appendingPathComponent("state.json")
         let enabled = workerRunning(directory) || serviceRunning()
         guard FileManager.default.fileExists(atPath: path.path) else {
             output("Not installed. Run codex-whip start.")
             return
         }
-        let state = try RetryState.read(path)
+        let state = try FileStore.readJSON(path)
         output(enabled ? "Enabled" : "Stopped")
+        let sessions = state["sessions"]
         if !enabled {
             output("Watching: 0 terminal sessions (stopped)")
-        } else if let sessions = state.sessions, sessions.object != nil {
+        } else if let sessions, sessions.object != nil {
             var details = ["\(sessions["active"]?.int ?? 0) active", "\(sessions["idle"]?.int ?? 0) idle"]
             if let errored = sessions["errored"]?.int, errored > 0 { details.append("\(errored) errored") }
             if let other = sessions["other"]?.int, other > 0 { details.append("\(other) other") }
@@ -258,36 +298,44 @@ public enum Service {
         let preferences = try Settings.read(directory: directory)
         output("Checks: every \(durationLabel(preferences.scanSeconds)). "
             + "Capacity retries: every \(durationLabel(preferences.retrySeconds)).")
-        output("Scope: " + (state.threads.isEmpty ? "loaded terminal sessions" : state.threads.joined(separator: ", ")))
-        let pending = enabled ? state.pending : [:]
-        let quotas = pending.values.filter { $0.kind == "quota" }.count
+        let threads = (state["threads"]?.array ?? []).compactMap(\.string)
+        output("Scope: " + (threads.isEmpty ? "loaded terminal sessions" : threads.joined(separator: ", ")))
+        let saved = state["pending"]?.object ?? [:]
+        let pending = enabled ? saved : [:]
+        let quotas = pending.values.filter { $0["kind"] == "quota" }.count
         output("Pending capacity retries: \(pending.count - quotas)")
         output("Waiting for quota: \(quotas)")
-        if let scanned = state.lastScanAt {
+        if let scanned = state["last_scan_at"]?.number {
             output("Last scan: \(Int(now - scanned)) seconds ago")
         } else {
             output("Waiting for first scan")
         }
-        if let error = state.lastError, !error.isEmpty { output("Connection: \(error)") }
-        for (id, item) in state.pending.sorted(by: { $0.key < $1.key }) {
-            let delay = max(0, Int(item.dueAt - now))
-            if item.kind == "quota" {
-                let reason = ["unknown": "quota status unavailable", "account_changed": "account changed"][item.quotaStatus ?? ""]
+        if let error = state["last_error"]?.string, !error.isEmpty { output("Connection: \(error)") }
+        for (id, item) in saved.sorted(by: { $0.key < $1.key }) {
+            let delay = max(0, Int((item["due_at"]?.number ?? now) - now))
+            let model = item["model"]?.string ?? ""
+            if item["kind"] == "quota" {
+                let reason = ["unknown": "quota status unavailable", "account_changed": "account changed"][item["quota_status"]?.string ?? ""]
                     ?? "waiting for included usage"
-                output("Quota wait: \(id) · \(item.model) · \(reason) · check in \(delay)s")
+                output("Quota wait: \(id) · \(model) · \(reason) · check in \(delay)s")
             } else {
-                output("Waiting: \(id) · \(item.model) · retry in \(delay)s")
+                output("Waiting: \(id) · \(model) · retry in \(delay)s")
             }
         }
-        for (id, item) in state.handled.sorted(by: { $0.key < $1.key }) where item.outcome == "uncertain" {
+        for (id, item) in (state["handled"]?.object ?? [:]).sorted(by: { $0.key < $1.key }) where item["outcome"] == "uncertain" {
             output("Uncertain send: \(id). Check this session manually; it will not be sent twice.")
         }
-        try printActivity(directory: directory, now: now, output: output)
+        try withoutActuallyEscaping(output) { try activity($0) }
     }
 
     public static func printActivity(directory: URL, hours: Int = 24, limit: Int = 5,
                                      now: Double = Date().timeIntervalSince1970, output: (String) -> Void) throws {
-        let report = try History.report(directory: directory, hours: hours, limit: limit, now: now)
+        printActivity(report: try History.report(directory: directory, hours: hours, limit: limit, now: now),
+                      hours: hours, now: now, output: output)
+    }
+
+    public static func printActivity(report: JSON, hours: Int = 24, now: Double = Date().timeIntervalSince1970,
+                                     output: (String) -> Void) {
         func count(_ name: String) -> Int { report[name]?.int ?? 0 }
         output("\nLast \(hours) hours:")
         guard report["available"] == true else {
