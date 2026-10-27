@@ -2,7 +2,7 @@ import Foundation
 
 /// A JSON value that keeps the distinctions the engine relies on: an integer is not a float,
 /// a boolean is not a number, and an object can be checked for duplicate keys.
-public enum JSON: Equatable, Sendable {
+public enum JSON: Sendable {
     case null
     case bool(Bool)
     case int(Int)
@@ -63,6 +63,23 @@ public enum JSON: Equatable, Sendable {
     public var nonemptyString: String? {
         guard let value = string, !value.isEmpty else { return nil }
         return value
+    }
+}
+
+extension JSON: Equatable {
+    /// Numbers compare by value, as in Python: 10000 equals 10000.0, while a boolean never equals a number.
+    public static func == (lhs: JSON, rhs: JSON) -> Bool {
+        switch (lhs, rhs) {
+        case (.null, .null): return true
+        case let (.bool(a), .bool(b)): return a == b
+        case let (.int(a), .int(b)): return a == b
+        case let (.int(a), .double(b)), let (.double(b), .int(a)): return Double(a) == b
+        case let (.double(a), .double(b)): return a == b
+        case let (.string(a), .string(b)): return a == b
+        case let (.array(a), .array(b)): return a == b
+        case let (.object(a), .object(b)): return a == b
+        default: return false
+        }
     }
 }
 
