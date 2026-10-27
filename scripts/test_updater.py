@@ -12,8 +12,8 @@ import json
 from pathlib import Path
 import plistlib
 import shutil
+import sqlite3
 import subprocess
-import sys
 import threading
 import time
 import uuid
@@ -103,11 +103,20 @@ def test_case(app, tools, base, tamper):
     before["enabled_at"] = 1234
     before["threads"] = ["qa-only-session"]
     state_path.write_text(json.dumps(before))
-    sys.path.insert(0, str(ROOT))
-    from history import History
-    history = History(state)
-    history.record("waiting", thread_id="qa-only-session", turn_id="qa-capacity")
-    history.close()
+    # One capacity event in the engine's history schema, written directly; no Codex session exists.
+    database = sqlite3.connect(state / "history.sqlite3")
+    with database:
+        database.executescript("""
+            CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value REAL NOT NULL);
+            CREATE TABLE IF NOT EXISTS events (ts REAL NOT NULL, event TEXT NOT NULL, thread_id TEXT NOT NULL,
+                turn_id TEXT NOT NULL, fields TEXT NOT NULL, PRIMARY KEY (event, thread_id, turn_id));
+            PRAGMA user_version = 1;
+        """)
+        now = time.time()
+        database.execute("INSERT OR IGNORE INTO metadata(key, value) VALUES ('recorded_since', ?)", (now,))
+        database.execute("INSERT INTO events VALUES (?, 'capacity', 'qa-only-session', 'qa-capacity', ?)",
+                         (now, json.dumps({"kind": "capacity", "thread_id": "qa-only-session", "turn_id": "qa-capacity"})))
+    database.close()
     run(["open", "-W", "-n", baseline, "--args", "--test-update-toggle", "--quit-after", "2"], timeout=20)
     toggles = read_report(report)
     assert any(e["event"] == "toggle-test-passed" for e in toggles.get("events", [])), toggles
@@ -132,8 +141,8 @@ def test_case(app, tools, base, tamper):
             run(["codesign", "--verify", "--deep", "--strict", baseline])
         after = json.loads(state_path.read_text())
         assert after["enabled_at"] == 1234 and after["threads"] == ["qa-only-session"], "Saved settings changed"
-        from history import read_report as activity_report
-        assert activity_report(state)["capacity"] == 1, "Activity history changed"
+        dashboard = json.loads(run([helper, "--state-dir", state, "dashboard"]).stdout)
+        assert dashboard["history"]["capacity"] == 1, "Activity history changed"
         wait_for(lambda: (state / "worker.pid").is_file(), "isolated helper resume", timeout=15)
         print(f"PASS: {'tampered update rejected' if tamper else 'signed automatic install and relaunch'}; settings/history preserved", flush=True)
     finally:

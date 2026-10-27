@@ -8,7 +8,7 @@ import ServiceManagement
 
 private let appName = "Codex Whip"
 private let advisoryLock: (Int32, Int32) -> Int32 = flock
-// The opening words of the watcher's error when Codex is not running (resolve_socket in codex_whip.py).
+// The opening words of the watcher's error when Codex is not running (resolveSocket in the engine).
 private let missingCodexMessage = "Codex daemon socket is unavailable"
 
 func isIsolatedQABundle() -> Bool {
@@ -129,7 +129,7 @@ private final class HelperClient {
     }
 
     // Routine menu refreshes read only the local state and advisory lock. They
-    // never launch the frozen executable or connect to a Codex session.
+    // never launch the helper or connect to a Codex session.
     func localDashboard() -> CommandResult {
         do {
             let stateURL = stateDirectory.appendingPathComponent("state.json")
@@ -278,7 +278,7 @@ private final class WorkerSupervisor {
 
     private func prepareIfNeeded() -> Bool {
         if prepared { return true }
-        // A cold frozen-runtime launch can include first-use macOS checks.
+        // A first launch can include macOS's first-use checks of the helper.
         let result = helper.run("prepare", timeout: 30)
         guard result.status == 0 else {
             shouldRun = false
