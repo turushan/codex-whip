@@ -62,6 +62,7 @@ final class Director {
     private let captions = Canvas(width: 1920, height: 1080)
     private let lockup = Canvas(width: 1920, height: 1080)
     private let emissive = Canvas(width: 1920, height: 1080)
+    private let errorLayer = Canvas(width: 1920, height: 1080)
     private let cameraKeys: [CameraKey]
     private let captionList: [Caption]
     private var emitted = false
@@ -218,6 +219,17 @@ final class Director {
                             1 - 0.5 * smooth((t - 52.0) / 0.4))
         // The finale lets the terminal dissolve so the end card sits on the open blueprint.
         world = c.fade(c.dim(c.blur(world, focus), dimAmount), 1 - smooth((t - 52.15) / 1.5))
+        // The capacity error stays sharp and bright while the session waits, so it can be read,
+        // and softens with the rest of the terminal when the reveal arrives.
+        let readable = presence(t, 4.6, 8.35, fadeIn: 0.45, fadeOut: 0.3)
+        if readable > 0 {
+            errorLayer.clear()
+            errorLayer.draw { cg in
+                cam.apply(cg)
+                terminal.drawErrors(cg, t: t)
+            }
+            world = c.fade(c.perspective(c.image(errorLayer), cam.tilt), readable).composited(over: world)
+        }
 
         // Whip with motion blur and a soft shadow.
         if let whipLayer = whipImage(t, camera: cam) {
@@ -355,7 +367,7 @@ final class Director {
                     cg.translateBy(x: f.midX, y: f.midY + (1 - enter) * 40)
                     cg.scaleBy(x: s, y: s)
                     cg.translateBy(x: -f.midX, y: -f.midY)
-                    ActivityWindow.draw(cg, counters: clamp01((t - 46.0) / 1.0), recent: recentActivity)
+                    ActivityWindow.draw(cg, recent: recentActivity)
                 }
             }
         }
@@ -470,7 +482,7 @@ final class Director {
             cg.withAlpha(textAlpha) {
                 Lockup.wordmark(cg, centerX: 960, baseline: 652, size: 104, reveal: (t - 8.3) / 0.6)
                 let tagline = TextStyle(font: Fonts.text(36), color: Palette.secondary)
-                let text = "Keep the model you chose."
+                let text = "Keep Codex working."
                 let enter = spring(t - 8.75, frequency: 1.5, damping: 0.8)
                 cg.withAlpha(clamp01((t - 8.75) / 0.3)) {
                     drawText(text, x: 960 - measure(text, tagline) / 2, baseline: 722 + (1 - enter) * 16, tagline)
@@ -487,7 +499,7 @@ final class Director {
             Lockup.wordmark(cg, centerX: 960, baseline: 566, size: 96, reveal: (t - 52.3) / 0.6)
             let left = TextStyle(font: Fonts.display(52, .bold), color: Palette.white, kern: -1.0)
             let right = left.with(color: Palette.cyan)
-            let a = "Same model. ", b = "Keep going."
+            let a = "Codex stops. ", b = "Whip doesn’t."
             let total = measure(a, left) + measure(b, right)
             let x = 960 - total / 2
             for (offset, text, style, delay) in [(0.0, a, left, 52.75), (measure(a, left), b, right, 53.0)] where t >= delay {
@@ -557,7 +569,7 @@ final class Director {
     private var menuItems: [MenuItem] {
         let s = film.settings
         return [
-            MenuItem(title: "Codex Whip", enabled: false), MenuItem(title: "Watching 1 session", enabled: false), .line,
+            MenuItem(title: "Watching 1 session", enabled: false), .line,
             MenuItem(title: "Pause"), MenuItem(title: "Start at Login", checked: true),
             MenuItem(title: "Retry every \(menuDuration(s.retrySeconds))", submenu: true),
             MenuItem(title: "Check every \(menuDuration(s.checkSeconds))", submenu: true),
@@ -578,12 +590,14 @@ final class Director {
     private let menuWidth = 436.0, submenuWidth = 290.0
     private var menuOrigin: V2 { V2(1920 - 10 - menuWidth, 38) }
     private var submenuOrigin: V2 {
-        V2(menuOrigin.x - submenuWidth + 6, MenuArt.rowTop(menuItems, 5, origin: menuOrigin) - 5 * MenuArt.scale)
+        V2(menuOrigin.x - submenuWidth + 6, MenuArt.rowTop(menuItems, retryRowIndex, origin: menuOrigin) - 5 * MenuArt.scale)
     }
+    /// The interval row the pointer opens, wherever it sits in the menu.
+    private var retryRowIndex: Int { menuItems.firstIndex { $0.title.hasPrefix("Retry every") }! }
 
     private func cursorPosition(_ t: Double) -> V2 {
         let glyph = MenuBar.glyphCenter() + V2(2, 2)
-        let retryRow = V2(menuOrigin.x + 170, MenuArt.rowTop(menuItems, 5, origin: menuOrigin) + MenuArt.rowHeight / 2)
+        let retryRow = V2(menuOrigin.x + 170, MenuArt.rowTop(menuItems, retryRowIndex, origin: menuOrigin) + MenuArt.rowHeight / 2)
         let choice = V2(submenuOrigin.x + 120, MenuArt.rowTop(retryChoices, 2, origin: submenuOrigin) + MenuArt.rowHeight / 2)
         let path: [(Double, V2)] = [(47.3, V2(1240, 660)), (48.1, glyph), (48.65, glyph), (49.2, retryRow), (49.65, retryRow),
                                     (50.15, choice), (50.8, choice), (51.0, V2(1180, 700)), (52.0, V2(1180, 700))]
@@ -649,7 +663,7 @@ final class Director {
             let open = clamp01((t - film.menuClick - 0.03) / 0.12)
             let close = smooth((t - film.menuCloses) / 0.15)
             cg.withAlpha((1 - close) * clamp01(open * 3)) {
-                let hover: Int? = t >= 49.15 ? 5 : nil
+                let hover: Int? = t >= 49.15 ? retryRowIndex : nil
                 MenuArt.draw(cg, menuItems, origin: menuOrigin, width: menuWidth, hover: hover, reveal: easeOut(open, 2))
                 if t >= film.submenuOpens {
                     let sub = clamp01((t - film.submenuOpens) / 0.1)

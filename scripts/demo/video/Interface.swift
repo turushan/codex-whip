@@ -175,7 +175,7 @@ enum TimelineColumn {
     }
 }
 
-// MARK: Illustrated announcement
+// MARK: Recreated post
 
 enum PostCard {
     static func draw(_ cg: CGContext, at origin: V2, avatar: CGImage) {
@@ -196,7 +196,7 @@ enum PostCard {
         drawText("Reset all propagated. Enjoy.", x: card.minX + 28, baseline: card.minY + 140,
                  TextStyle(font: Fonts.text(31, .medium), color: Palette.white))
         let pill = TextStyle(font: Fonts.text(14, .semibold), color: Palette.amber, kern: 0.5)
-        let label = "ILLUSTRATED ANNOUNCEMENT"
+        let label = "RECREATED FROM X"
         let pillRect = CGRect(x: card.minX + 28, y: card.minY + 162, width: measure(label, pill) + 22, height: 26)
         cg.fill(pillRect, Palette.amber.alpha(0.12), radius: 13)
         drawText(label, x: pillRect.minX + 11, baseline: pillRect.minY + 18, pill)
@@ -208,8 +208,9 @@ enum PostCard {
 enum ActivityWindow {
     static let frame = CGRect(x: 690, y: 296, width: 760, height: 672)
 
-    /// The native Activity report (native/App.swift), with illustrative counts and session ID.
-    static func draw(_ cg: CGContext, counters: Double, recent: [(clock: Double, label: String)]) {
+    /// The native Activity report (native/App.swift), with illustrative counts and session ID. It opens
+    /// on the night's totals, as the app's report does.
+    static func draw(_ cg: CGContext, recent: [(clock: Double, label: String)]) {
         let f = frame
         cg.shadowed(blur: 60, offset: V2(0, 28), color: RGBA(0x000000, 0.55)) {
             cg.fill(f, RGBA(0x1E1E20), radius: 16)
@@ -225,20 +226,19 @@ enum ActivityWindow {
         }
         let title = TextStyle(font: Fonts.text(16.5, .semibold), color: RGBA(0xE6E6E8, 0.85))
         drawText("Codex Whip Activity", x: f.midX - measure("Codex Whip Activity", title) / 2, baseline: f.minY + 29, title)
-        func n(_ value: Int) -> Int { Int((Double(value) * smooth(counters)).rounded()) }
         let body = TextStyle(font: Fonts.text(20), color: RGBA(0xF2F2F4))
         let head = TextStyle(font: Fonts.text(20, .semibold), color: RGBA(0xFFFFFF))
         let dim = TextStyle(font: Fonts.text(18), color: RGBA(0xA9A9AE))
         var lines: [(String, TextStyle)] = [
             ("Last 24 hours", head), ("", body),
             ("Capacity", head),
-            ("Errors found: \(n(1)) · Retries sent: \(n(1))", body),
-            ("Successful: \(n(1)) · Failed: 0 (0 capacity, 0 other)", body),
+            ("Errors found: 1 · Retries sent: 1", body),
+            ("Successful: 1 · Failed: 0 (0 capacity, 0 other)", body),
             ("Interrupted: 0 · Awaiting recovery: 0", body),
             ("Uncertain sends: 0", body), ("", body),
             ("Quota recovery", head),
-            ("Limits found: \(n(2)) · Retries sent: \(n(2))", body),
-            ("Successful: \(n(2)) · Failed: 0 (0 capacity, 0 other)", body),
+            ("Limits found: 2 · Retries sent: 2", body),
+            ("Successful: 2 · Failed: 0 (0 capacity, 0 other)", body),
             ("Interrupted: 0 · Awaiting recovery: 0", body),
             ("Uncertain sends: 0", body), ("", body),
             ("Success: 2 minutes without interruption, or a finished turn.", dim), ("", body),

@@ -37,7 +37,7 @@ POSTER_TIME = 58.0
 REVIEW_TIMES = (1.5, 4.2, 6.4, 8.25, 9.6, 11.0, 13.5, 16.05, 17.6, 20.5, 23.6, 26.9,
                 28.1, 30.5, 34.4, 36.9, 40.0, 43.6, 45.8, 46.8, 49.9, 52.3, 54.8, 58.0)
 STRIKE_TIMES = tuple(round(15.62 + index / 30, 4) for index in range(18))
-TITLE = "Codex Whip · Same model. Keep going."
+TITLE = "Codex Whip · Codex stops. Whip doesn’t."
 DESCRIPTION = (
     "Illustrated marketing film: a capacity retry, a scheduled quota renewal and an early reset, overnight. "
     "Time compressed and typing illustrated. Whip checks Codex quota, not social posts, and sends one saved "
@@ -214,7 +214,7 @@ def main() -> None:
         "origin": "Programmatic AppKit, CoreGraphics and Core Image render with preexisting docs/app-icon.png; "
                   "original procedural score from scripts/demo/audio",
         "session": "Synthetic; typing illustrated, time compressed. No session files, identifiers or inference requests. "
-                   "The illustrated announcement is followed by a separate Codex quota confirmation; the app does not monitor posts.",
+                   "The recreated post is followed by a separate Codex quota confirmation; the app does not monitor posts.",
         "sha256": {path.name: hashlib.sha256(path.read_bytes()).hexdigest()
                    for path in (film, TARGET / "codex-whip.gif", TARGET / "poster.png") if path.exists()},
     }

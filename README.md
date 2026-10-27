@@ -1,7 +1,7 @@
 <div align="center">
   <img src="docs/app-icon.png" alt="Codex Whip" width="136">
   <h1>Codex Whip</h1>
-  <p><strong>Keep the model you chose.</strong></p>
+  <p><strong>Keep Codex working.</strong></p>
   <p>A tiny Mac companion that nudges Codex back to work after capacity errors and quota waits.</p>
   <p>
     <a href="https://github.com/turushan/codex-whip/releases/latest/download/Codex-Whip-arm64.dmg"><strong>Download for Apple silicon</strong></a>

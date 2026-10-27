@@ -269,7 +269,6 @@ final class Film {
         add(morningLapse.start, "sunrise", ["end": 44.0])
         add(morningLapse.end, "done")
         add(activityEnters, "window", ["pan": 0.3])
-        add(46.0, "counter", ["end": 47.0])
         add(menuClick, "click", ["pan": 0.7])
         add(menuClick + 0.05, "menu", ["pan": 0.7])
         add(submenuOpens, "hover", ["pan": 0.5])

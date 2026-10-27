@@ -164,7 +164,13 @@ final class Terminal {
         }
     }
 
-    private func drawLog(_ cg: CGContext, t: Double, glitch: Double) {
+    /// Only the error lines, where the full terminal would draw them, for the sharp layer that keeps
+    /// the stop readable while the rest of the terminal goes out of focus.
+    func drawErrors(_ cg: CGContext, t: Double) {
+        drawLog(cg, t: t, glitch: 0, only: .error)
+    }
+
+    private func drawLog(_ cg: CGContext, t: Double, glitch: Double, only kind: LogKind? = nil) {
         let visible = lines.filter { $0.time <= t }
         var offsets: [Double] = []
         var total = 0.0
@@ -179,7 +185,7 @@ final class Terminal {
         cg.withState {
             cg.clip(to: CGRect(x: TerminalLayout.frame.minX, y: TerminalLayout.frame.minY + TerminalLayout.titleHeight + 4,
                                width: TerminalLayout.frame.width, height: TerminalLayout.logBottom - TerminalLayout.frame.minY - TerminalLayout.titleHeight + 10))
-            for (index, line) in visible.enumerated() {
+            for (index, line) in visible.enumerated() where kind == nil || line.kind == kind {
                 let top = TerminalLayout.logTop + offsets[index] - scroll
                 if top < TerminalLayout.logTop - 120 || top > TerminalLayout.logBottom + 20 { continue }
                 let fade = line.time < 0 ? 1 : appear(line.time, t)
@@ -191,11 +197,12 @@ final class Terminal {
                     }
                 }
             }
-            if working {
+            if working && kind == nil {
                 let top = TerminalLayout.logTop + total - scroll
                 cg.withAlpha(workingAlpha) { drawWorking(cg, top: top, t: t) }
             }
         }
+        guard kind == nil else { return }
         // Soft fade where the log scrolls under the title bar.
         let fadeTop = TerminalLayout.frame.minY + TerminalLayout.titleHeight
         let gradient = CGGradient(colorsSpace: CGColorSpace(name: CGColorSpace.sRGB),

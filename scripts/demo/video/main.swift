@@ -38,13 +38,13 @@ if let grain = option("--grain").flatMap(Double.init) {
     director.grain = grain
 }
 let origin = "Codex Whip illustrated marketing film, rendered by scripts/demo/video with AppKit, CoreGraphics and Core Image. "
-    + "Synthetic sessions; typing illustrated; time compressed. The reset post is an illustrated example; the app checks Codex quota, "
+    + "Synthetic sessions; typing illustrated; time compressed. The reset post recreates a public post on X; the app checks Codex quota, "
     + "not posts, and sends one local continuation message. No live session data or model requests."
 
 func savePNG(_ image: CGImage, to url: URL) {
     let destination = CGImageDestinationCreateWithURL(url as CFURL, UTType.png.identifier as CFString, 1, nil)!
     let metadata: [CFString: Any] = [kCGImagePropertyPNGDictionary: [
-        kCGImagePropertyPNGTitle: "Codex Whip · Same model. Keep going.",
+        kCGImagePropertyPNGTitle: "Codex Whip · Codex stops. Whip doesn’t.",
         kCGImagePropertyPNGAuthor: "Codex Whip",
         kCGImagePropertyPNGDescription: origin,
         kCGImagePropertyPNGSoftware: "Native AppKit, CoreGraphics and Core Image deterministic renderer",

@@ -50,8 +50,8 @@ the app session. Sound begins at a moderate player volume and never changes the 
 
 The sixty-second marketing film follows one terminal through a night. Codex stops at 2:14 AM, a
 whip crack introduces the app, and three stories follow on the menu bar clock: a capacity retry, a
-scheduled quota renewal, and an illustrated Tibo reset announcement. Morning ends on the native
-Activity report and menu, then "Same model. Keep going." holds from 52 seconds. A Whip timeline
+scheduled quota renewal, and a recreated reset post from Tibo. Morning ends on the native
+Activity report and menu, then "Codex stops. Whip doesn’t." holds from 52 seconds. A Whip timeline
 column explains each wait; the three-minute capacity wait and five-minute quota checks are
 explicitly compressed. The reset post precedes a separate Codex quota confirmation; it never
 suggests Whip monitors posts or redeems credits.
