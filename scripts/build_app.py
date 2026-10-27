@@ -12,6 +12,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 import venv
 
 import sparkle
@@ -136,9 +137,18 @@ def main():
     disk = output / f"Codex-Whip-{architecture}.dmg"
     disk.unlink(missing_ok=True)
     # The installer window: background, icon positions and the volume icon (scripts/dmg_settings.py).
-    run([interpreter, "-m", "dmgbuild", "-s", ROOT / "scripts/dmg_settings.py",
-         "-D", f"app={app}", "-D", f"assets={ROOT / 'assets/dmg'}",
-         "-D", f"icon={contents / 'Resources/AppIcon.icns'}", NAME, disk])
+    # Detaching the scratch image can fail while Spotlight still reads it, so a busy disk gets retries.
+    for attempt in range(3):
+        try:
+            run([interpreter, "-m", "dmgbuild", "-s", ROOT / "scripts/dmg_settings.py",
+                 "-D", f"app={app}", "-D", f"assets={ROOT / 'assets/dmg'}",
+                 "-D", f"icon={contents / 'Resources/AppIcon.icns'}", NAME, disk])
+            break
+        except subprocess.CalledProcessError:
+            disk.unlink(missing_ok=True)
+            if attempt == 2:
+                raise
+            time.sleep(10)
     digest = hashlib.sha256(disk.read_bytes()).hexdigest()
     (output / "SHA256SUMS.txt").write_text(f"{digest}  {disk.name}\n")
     print(f"\nBuilt {app}\nBuilt {disk}\nSHA256 {digest}")
