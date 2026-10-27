@@ -4,27 +4,23 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
     <channel>
         <title>Codex Whip</title>
         <item>
-            <title>1.10.2</title>
-            <pubDate>Tue, 27 Oct 2026 11:24:28 +0100</pubDate>
+            <title>1.10.3</title>
+            <pubDate>Tue, 27 Oct 2026 15:20:05 +0100</pubDate>
             <link>https://github.com/turushan/codex-whip</link>
-            <sparkle:version>1.10.2</sparkle:version>
-            <sparkle:shortVersionString>1.10.2</sparkle:shortVersionString>
+            <sparkle:version>1.10.3</sparkle:version>
+            <sparkle:shortVersionString>1.10.3</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
             <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="plain-text"><![CDATA[Codex Whip 1.10.2
+            <description sparkle:format="plain-text"><![CDATA[Codex Whip is now signed with a Developer ID and notarized by Apple. New downloads open like any other Mac app, with no trip to Privacy & Security.
 
-The whip cracks when Codex Whip opens.
+Turning on Whip Sound plays the crack once, so you hear your choice right away.
 
-• Opening the app plays the whip sound once. Quitting stays silent.
-• New installs start with Whip Sound and Automatic Updates on. Your current choices stay as they are.
-• The installer window spells out the three first-launch steps for macOS's security check.
-
-macOS 14 or later. This community build is ad hoc signed and is not Apple-notarized.
+If Start at Login was on, Whip registers it again after this update. If it shows off, turn it on once from the menu.
 ]]></description>
-            <enclosure url="https://github.com/turushan/codex-whip/releases/download/v1.10.2/Codex-Whip-arm64.dmg" length="28291394" type="application/octet-stream" sparkle:edSignature="McAc4glNVoJO6bJ/A7sz/R190pJnysW6MH1EABXVW9smbt0Vf1ZfBsOPixtLvBZQzLLLMEXYvNAfJw/5Cx0AAA=="></enclosure>
+            <enclosure url="https://github.com/turushan/codex-whip/releases/download/v1.10.3/Codex-Whip-arm64.dmg" length="28423212" type="application/octet-stream" sparkle:edSignature="gyCq8U3jKAZcKlZ1N8aY5rZgOZ1AXhcycVS4eaccEvCoEAvrjo0hg7tk3TW7wo79kINGpSoUWjVJQyagy6KzDQ=="></enclosure>
         </item>
     </channel>
 </rss><!-- sparkle-signatures:
-edSignature: FzCtytk+gKvBJLNsUpruaNdS62Keft36K2E+YfuJwaRhdZM7Z4D05vFG7h2rVlLNM+VFW81zeI5pSVWODCtkAw==
-length: 1691
+edSignature: 90CdJkrk2EYY/3hjmzRyIliQXn23cUrFlYnAeWdq8kR9rJdJ69/9G1E6SJ0ew6zDfW06rNbb3DERSxjidTRSAA==
+length: 1626
 -->

@@ -4,26 +4,22 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
     <channel>
         <title>Codex Whip</title>
         <item>
-            <title>1.10.2</title>
-            <pubDate>Tue, 27 Oct 2026 11:24:28 +0100</pubDate>
+            <title>1.10.3</title>
+            <pubDate>Tue, 27 Oct 2026 15:20:05 +0100</pubDate>
             <link>https://github.com/turushan/codex-whip</link>
-            <sparkle:version>1.10.2</sparkle:version>
-            <sparkle:shortVersionString>1.10.2</sparkle:shortVersionString>
+            <sparkle:version>1.10.3</sparkle:version>
+            <sparkle:shortVersionString>1.10.3</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <description sparkle:format="plain-text"><![CDATA[Codex Whip 1.10.2
+            <description sparkle:format="plain-text"><![CDATA[Codex Whip is now signed with a Developer ID and notarized by Apple. New downloads open like any other Mac app, with no trip to Privacy & Security.
 
-The whip cracks when Codex Whip opens.
+Turning on Whip Sound plays the crack once, so you hear your choice right away.
 
-• Opening the app plays the whip sound once. Quitting stays silent.
-• New installs start with Whip Sound and Automatic Updates on. Your current choices stay as they are.
-• The installer window spells out the three first-launch steps for macOS's security check.
-
-macOS 14 or later. This community build is ad hoc signed and is not Apple-notarized.
+If Start at Login was on, Whip registers it again after this update. If it shows off, turn it on once from the menu.
 ]]></description>
-            <enclosure url="https://github.com/turushan/codex-whip/releases/download/v1.10.2/Codex-Whip-x86_64.dmg" length="28960886" type="application/octet-stream" sparkle:edSignature="6uO7xTNnFf++HPOyKeFQ1hVq/0P74/L9NwIDLvlDL7C+jRio4hHuTepE6EIUt7lOlNvkltWVk0v+BrjMScsKAw=="></enclosure>
+            <enclosure url="https://github.com/turushan/codex-whip/releases/download/v1.10.3/Codex-Whip-x86_64.dmg" length="29066018" type="application/octet-stream" sparkle:edSignature="RCE7MmmPUnjQ968cbWfABQbq+UYn2Zgn45SCJl/8s7p+aIfeJGYnyovaB/BBY9q6xoYe5QPg6XYE/vd1uPMzBQ=="></enclosure>
         </item>
     </channel>
 </rss><!-- sparkle-signatures:
-edSignature: 5yGWlQ3B4nqFlAsYgCQ++u3miJOGzA0wFZWOXY2hZsAr96kzIFcDHmNOklUU9Ak0yGfFhQShz5Ttn8cSh45rDA==
-length: 1613
+edSignature: T0hMN3dj5/mV5qsc8WmODhy8mrGa0F3H6Z7eBFM4B4COGdf6Mqx/0Wj69iHhoLJjYhb9cTiQ0r74wNGndrKbDg==
+length: 1548
 -->
