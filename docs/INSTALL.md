@@ -45,8 +45,9 @@ Release downloads and update feeds are public. No GitHub sign-in is required.
 
 Choose **Check for Updates…** to check GitHub immediately and install an available release.
 The app checks quietly once a day. **Automatic Updates** enables background downloads, installation,
-and automatic relaunch. With it off, a new release appears as **A new update is available…** at the
-top of the menu. Click it to review and install; nothing downloads until you choose to install.
+and automatic relaunch. With it off, a new release appears at the top of the menu with its version,
+such as **Update to Version 1.9.0…**. Click it to review and install; nothing downloads until you
+choose to install.
 Update feeds and archives are verified with the app's embedded Ed25519 public key by Sparkle.
 
 For a manual update, quit the app, replace its copy in Applications, and reopen it.

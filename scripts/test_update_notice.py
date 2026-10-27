@@ -25,7 +25,11 @@ from test_updater import read_report, run, wait_for
 
 
 ROOT = Path(__file__).resolve().parents[1]
-NOTICE = "A new update is available…"
+
+
+def is_update_notice(title):
+    """The menu names the available version, or falls back to a generic title."""
+    return title.startswith("Update to Version ") or title == "Install Update…"
 
 
 def script(body, *arguments):
@@ -59,6 +63,8 @@ class Fixture:
         threading.Thread(target=self.server.serve_forever, daemon=True).start()
         url = f"http://127.0.0.1:{self.server.server_port}/"
         target_version = plistlib.loads((app / "Contents/Info.plist").read_bytes())["CFBundleVersion"]
+        # The feed's display version is the target copy's short version string set below.
+        self.notice = f"Update to Version {target_version}…"
         for destination, version in ((self.app, target_version if current else "1.0.0"),
                                      (self.directory / "target/Codex Whip Notice QA.app", target_version)):
             shutil.copytree(app, destination, symlinks=True)
@@ -202,21 +208,21 @@ def available_case(app, tools, base, captures):
         assert not any(path.endswith(".zip") for path in fixture.requests), fixture.requests
         assert fixture.ui("return count of windows") == "0", "Scheduled check opened an update window"
         fixture.open_menu()
-        assert fixture.menu_names()[0] == NOTICE, fixture.menu_names()
+        assert fixture.menu_names()[0] == fixture.notice, fixture.menu_names()
         assert fixture.ui('return enabled of menu item (item 2 of argv) of '
-                          'menu 1 of menu bar item 1 of menu bar 1', NOTICE) == "true"
+                          'menu 1 of menu bar item 1 of menu bar 1', fixture.notice) == "true"
         fixture.capture(captures / "update-notice-menu.png", menu=True)
         # A pending session must remain reachable even if auto-install is enabled.
         fixture.click_menu("Automatic Updates")
         wait_for(lambda: read_report(fixture.report).get("automatically_downloads"), "auto-install on")
         assert read_report(fixture.report)["available_version"]
         fixture.open_menu()
-        assert fixture.menu_names()[0] == NOTICE
+        assert fixture.menu_names()[0] == fixture.notice
         fixture.click_menu("Automatic Updates")
         wait_for(lambda: not read_report(fixture.report).get("automatically_downloads"), "auto-install off")
         assert read_report(fixture.report)["automatically_checks"]
         fixture.open_menu()
-        fixture.click_menu(NOTICE)
+        fixture.click_menu(fixture.notice)
         wait_for(lambda: "Install Update" in fixture.window_buttons(), "standard update dialog", timeout=15)
         assert not read_report(fixture.report)["automatically_downloads"]
         assert not any(path.endswith(".zip") for path in fixture.requests), fixture.requests
@@ -226,7 +232,7 @@ def available_case(app, tools, base, captures):
                  "notice cleared after skipping update", timeout=10)
         assert fixture.event("update-notice-cleared")
         fixture.open_menu()
-        assert NOTICE not in fixture.menu_names()
+        assert not any(map(is_update_notice, fixture.menu_names())), fixture.menu_names()
         return {"quiet_notice": True, "no_unrequested_window_or_archive_download": True,
                 "migration_preserved_download_opt_out": True, "pending_notice_survives_toggle": True,
                 "notice_opens_standard_dialog": True, "skip_clears_notice": True,
@@ -244,7 +250,7 @@ def current_case(app, tools, base, captures):
         assert report.get("available_version") is None, report
         assert report["automatically_checks"] and not report["automatically_downloads"], report
         fixture.open_menu()
-        assert NOTICE not in fixture.menu_names()
+        assert not any(map(is_update_notice, fixture.menu_names())), fixture.menu_names()
         fixture.capture(captures / "update-current-menu.png", menu=True)
         fixture.quit()
         fixture.preference("SUEnableAutomaticChecks", False)

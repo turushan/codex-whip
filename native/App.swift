@@ -520,7 +520,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
     private func buildMenu() {
         menu.autoenablesItems = false
         menu.delegate = self
-        updateNoticeItem = action("A new update is available…", selector: #selector(checkForUpdates))
+        updateNoticeItem = action("Install Update…", selector: #selector(checkForUpdates))
         updateNoticeItem.image = NSImage(systemSymbolName: "circle.fill", accessibilityDescription: nil)?
             .withSymbolConfiguration(NSImage.SymbolConfiguration(paletteColors: [.systemOrange]))
         updateNoticeItem.image?.size = NSSize(width: 9, height: 9)
@@ -602,12 +602,13 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
         let preferenceError = preferenceSetupError ?? preferencesMenu?.errorText
         checkForUpdatesItem.isEnabled = appUpdater?.canCheckForUpdates == true && !installingUpdate
         let availableVersion = appUpdater?.availableUpdateVersion
+        let version = availableVersion.flatMap { $0.isEmpty ? nil : $0 }
         updateNoticeItem.isHidden = availableVersion == nil
         updateNoticeSeparator.isHidden = availableVersion == nil
         updateNoticeItem.isEnabled = checkForUpdatesItem.isEnabled
-        updateNoticeItem.toolTip = availableVersion.map {
-            "Version \($0) is available. Review the update and choose when to install."
-        }
+        updateNoticeItem.title = version.map { "Update to Version \($0)…" } ?? "Install Update…"
+        updateNoticeItem.toolTip = availableVersion == nil ? nil
+            : "\(version.map { "Version \($0)" } ?? "A new version") is available. Review the update and choose when to install."
         automaticUpdatesItem.isEnabled = appUpdater?.isEnabled == true && !installingUpdate
         automaticUpdatesItem.state = appUpdater?.automaticUpdatesEnabled == true ? .on : .off
         errorRow.isHidden = helperError == nil && dashboardError == nil && preferenceError == nil
