@@ -20,3 +20,6 @@ dist/
 
 # Swift package build output.
 engine/.build/
+
+# Agent worktrees.
+.claude/worktrees/
