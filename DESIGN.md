@@ -16,7 +16,8 @@ Retain transparent outer margins and the rounded silhouette for older macOS vers
 
 The first lines answer whether retries are enabled, how many sessions are watched, and whether a retry
 is waiting. The actions are Pause/Resume, Start at Login, Retry every, Check every, Retry Message,
-update controls, Activity, Watch Demo…, and Quit.
+update controls, Activity, Watch Demo, and Quit Codex Whip. Activity and Watch Demo only show
+information, so they take no ellipsis. Quit names the app and sits after its own separator.
 
 Retry every and Check every are native submenus with checked selections and labeled defaults.
 Five-minute checks and three-minute capacity retries are the defaults; selections save immediately. Preserve
@@ -42,7 +43,7 @@ Keep separate Capacity and Quota recovery counts. Show a quota status row only w
 exist, distinguish the next quota check from a capacity retry countdown, and explain unknown status
 or account changes without showing account identifiers.
 
-Watch Demo… opens a resizable native 16:9 video window with compact inline playback, mute and
+Watch Demo opens a resizable native 16:9 video window with compact inline playback, mute and
 volume controls that keep the illustrated input visible. Play the bundled MP4 only when requested;
 it ends without looping. Bringing the open window forward preserves playback. Closing stops both
 streams; reopening starts from the beginning and retains the user's mute/volume choices during

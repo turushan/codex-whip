@@ -536,9 +536,12 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
         automaticUpdatesItem = action("Automatic Updates", selector: #selector(toggleAutomaticUpdates))
         automaticUpdatesItem.toolTip = "Automatically download and install updates. Quiet daily update checks stay on."
         menu.addItem(.separator())
-        _ = action("Activity…", selector: #selector(showActivity))
-        _ = action("Watch Demo…", selector: #selector(showDemo))
-        _ = action("Quit", selector: #selector(quit), key: "q")
+        // Both windows only show information, so their titles take no ellipsis.
+        _ = action("Activity", selector: #selector(showActivity))
+        _ = action("Watch Demo", selector: #selector(showDemo))
+        // No row above names the app, so Quit does.
+        menu.addItem(.separator())
+        _ = action("Quit \(appName)", selector: #selector(quit), key: "q")
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         statusItem.button?.image = MenuBarIcon.whip(accessibilityDescription: appName)
         statusItem.button?.setAccessibilityLabel(appName)

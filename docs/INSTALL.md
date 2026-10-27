@@ -11,7 +11,7 @@ The app appears in the menu bar. Open Codex CLI normally, then use the menu to p
 watching, choose **Start at Login**, or open **Activity**. Quitting the app stops its helper and
 leaves any Codex turn already running alone.
 
-Choose **Watch Demo…** for an illustrated film of capacity retries, a scheduled quota renewal and an
+Choose **Watch Demo** for an illustrated film of capacity retries, a scheduled quota renewal and an
 early reset announcement. The bundled video includes original sound, with native pause, seek, replay,
 mute and volume controls. Sound starts only when you open the demo;
 the player retains your mute/volume choices during this app session.

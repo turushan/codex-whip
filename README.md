@@ -43,7 +43,7 @@ Defaults: **check every five minutes · retry capacity every three minutes**. Pa
 2. Open it and choose **Start at Login** if you want it there each morning.
 3. Use **Codex CLI** as usual. Whip watches the loaded terminal sessions.
 
-Choose **Watch Demo…** in the menu to see capacity retries, quota renewals, and an early reset in action, with sound.
+Choose **Watch Demo** in the menu to see capacity retries, quota renewals, and an early reset in action, with sound.
 
 First launch blocked? This community build has no Apple notarization. [How to open it](docs/INSTALL.md#first-launch).
 

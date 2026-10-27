@@ -575,7 +575,8 @@ final class Director {
             MenuItem(title: "Check every \(menuDuration(s.checkSeconds))", submenu: true),
             MenuItem(title: "Retry Message: Default", submenu: true), .line,
             MenuItem(title: "Check for Updates…"), MenuItem(title: "Automatic Updates", checked: true), .line,
-            MenuItem(title: "Activity…"), MenuItem(title: "Watch Demo…"), MenuItem(title: "Quit", key: "⌘Q"),
+            MenuItem(title: "Activity"), MenuItem(title: "Watch Demo"), .line,
+            MenuItem(title: "Quit Codex Whip", key: "⌘Q"),
         ]
     }
 
