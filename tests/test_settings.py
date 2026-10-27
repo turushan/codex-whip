@@ -49,7 +49,7 @@ class SettingsTests(unittest.TestCase):
         self.assertFalse(self.directory.exists())
         self.assertEqual(helper.DEFAULT_SETTINGS["retry_seconds"], 180)
         self.assertEqual(helper.DEFAULT_SETTINGS["scan_seconds"], 300)
-        self.assertIs(helper.DEFAULT_SETTINGS["sound_enabled"], False)
+        self.assertIs(helper.DEFAULT_SETTINGS["sound_enabled"], True)
 
     def test_legacy_preferences_keep_custom_values_and_default_sound_off(self):
         self.directory.mkdir()

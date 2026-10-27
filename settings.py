@@ -10,7 +10,7 @@ import tempfile
 
 DEFAULT_MESSAGE = "Keep using the selected model. Continue the unfinished work."
 DEFAULT_SETTINGS = {"retry_seconds": 180, "scan_seconds": 300, "message": DEFAULT_MESSAGE,
-                    "sound_enabled": False}
+                    "sound_enabled": True}
 
 
 class SettingsError(ValueError):

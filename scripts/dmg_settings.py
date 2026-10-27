@@ -11,8 +11,8 @@ symlinks = {"Applications": "/Applications"}
 icon = defines["icon"]
 background = os.path.join(assets, "background.png")
 
-# The height includes the 28-point title bar, so the 420-point background shows whole.
-window_rect = ((200, 140), (660, 448))
+# The height includes the 28-point title bar, so the 480-point background shows whole.
+window_rect = ((200, 120), (660, 508))
 default_view = "icon-view"
 show_status_bar = False
 show_tab_view = False
@@ -24,8 +24,8 @@ arrange_by = None
 icon_size = 112
 text_size = 13
 icon_locations = {
-    os.path.basename(app): (165, 200),
-    "Applications": (495, 200),
+    os.path.basename(app): (165, 176),
+    "Applications": (495, 176),
     # Outside the window, for people who show hidden files in Finder.
     ".background.tiff": (900, 900),
     ".VolumeIcon.icns": (1000, 900),
