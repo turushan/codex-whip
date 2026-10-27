@@ -14,7 +14,7 @@ A local macOS menu bar app and command-line helper for retrying Codex terminal c
 - Quota recovery requires explicit ordinaryUsageAllowed permission and the same observed account. Unknown quota status or account changes hold retries. Never infer permission from percentages or reset times, consume reset credits, or switch accounts/models.
 - Keep quota and capacity Activity counters separate. Do not log or store account identities in history; any private account binding stays in retry state.
 - Keep the native app minimal: status, pause/resume, Start at Login, retry/check interval submenus, retry-message preview/editor/default action, Activity, Watch Demo, update controls, About, and Quit.
-- Read and save preferences locally in Swift. Generate bundled defaults from settings.py; do not start the Python helper to open or edit preferences.
+- Read and save preferences locally in Swift. Bundled defaults come from the engine's `Settings.defaults`; do not start the helper to open or edit preferences.
 - Keep Whip Sound on by default for new installs. Play it asynchronously for live accepted retries, once when the app opens, and once when the sound is turned on; never for scans, uncertain sends, reconstructed history, or quitting.
 - Count retry recovery after two minutes of uninterrupted observed activity, or successful completion sooner.
 - The app owns its helper process and login item. The optional CLI service is a separate installation mode.
@@ -34,9 +34,10 @@ A local macOS menu bar app and command-line helper for retrying Codex terminal c
 ## Validation
 
 ```sh
-python3 -m unittest discover -s tests -p 'test_*.py'
-python3 codex_whip.py doctor
+swift test --package-path engine
+swift run --package-path engine codex-whip doctor
 python3 scripts/build_app.py
 ```
 
-Builds use the host architecture. See [installation and source builds](docs/INSTALL.md).
+The engine is the Swift package in `engine/`: one universal `codex-whip` executable is both the
+app's helper and the CLI. Builds are universal. See [installation and source builds](docs/INSTALL.md).

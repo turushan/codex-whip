@@ -72,7 +72,7 @@ def main():
     checksums = archive.parent / "SHA256SUMS.txt"
     checksums.write_text("".join(
         f"{hashlib.sha256(item.read_bytes()).hexdigest()}  {item.name}\n"
-        for item in sorted(archive.parent.glob("Codex-Whip-*.dmg"))
+        for item in sorted(archive.parent.glob("Codex-Whip*.dmg"))
     ))
     print(f"\nNotarized and stapled {archive}")
 

@@ -23,7 +23,7 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
         with:
           python-version: "3.13"
-      - name: Build the app and disk image
+      - name: Test the engine, then build the universal app and disk image
         run: python3 scripts/build_app.py
       - name: Verify native preferences and sound toggle
         shell: bash
@@ -32,19 +32,16 @@ jobs:
           "$RUNNER_TEMP/whip-prefs-test"
           xcrun swiftc -O -swift-version 5 native/Preferences.swift native/Settings.swift scripts/test_sound_menu.swift -o "$RUNNER_TEMP/whip-sound-menu-test"
           "$RUNNER_TEMP/whip-sound-menu-test"
-      - name: Check the bundled helper in an isolated directory
+      - name: Check the universal app and its helper on this runner's architecture
         shell: bash
         run: |
           helper="dist/Codex Whip.app/Contents/Helpers/whip-helper"
+          lipo -archs "$helper" | grep -q "x86_64 arm64"
+          lipo -archs "dist/Codex Whip.app/Contents/MacOS/CodexWhip" | grep -q "x86_64 arm64"
           state_dir="$RUNNER_TEMP/codex-whip-smoke"
           "$helper" --state-dir "$state_dir" prepare
           "$helper" --state-dir "$state_dir" dashboard
           codesign --verify --deep --strict "dist/Codex Whip.app"
-      - name: Verify bundled worker shutdown during stalled RPCs
-        shell: bash
-        run: |
-          export CODEX_WHIP_TEST_HELPER="$PWD/dist/Codex Whip.app/Contents/Helpers/whip-helper"
-          python3 -m unittest discover -s tests -p 'test_shutdown.py' -q
       - name: Upload disk image and checksum
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:

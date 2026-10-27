@@ -53,7 +53,7 @@ python3 scripts/render_demo.py            # render into the ignored build/demo/o
 python3 scripts/render_demo.py --publish  # copy that render into docs/demo
 ```
 
-The wrapper reads the shared message and interval defaults from `settings.py`,
+The wrapper reads the shared message and interval defaults from the engine (`codex-whip settings`),
 compiles both renderers, writes the timeline and sound cues to
 `build/demo/plan.json`, renders the score from that plan, renders the picture in
 parallel chunks, deletes the chunks once they are encoded and writes these into

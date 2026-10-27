@@ -76,19 +76,17 @@ Requirements:
 From a clone of the repository:
 
 ```sh
-python3 -m unittest discover -s tests -p 'test_*.py'
 python3 scripts/build_app.py
 ```
 
-The build script manages `.venv-build/`, installs pinned PyInstaller dependencies, and bundles
-the engine and Python runtime inside the native app. It produces the app, an architecture-named
-DMG, and checksums in `dist/`. An Apple silicon build produces
-`dist/Codex-Whip-arm64.dmg`. Build on an Intel Mac to produce an Intel version.
+The build script runs the engine's Swift tests, builds the engine in `engine/` and the menu bar
+app for both Apple silicon and Intel, and produces the universal app, `dist/Codex-Whip.dmg` and
+its checksum in `dist/`. It keeps the installer tool `dmgbuild` in `.venv-build/`.
 
 The generated app is ad hoc signed. Building locally does not provide a Developer ID signature
 or Apple notarization; the [release guide](RELEASING.md) describes the signed release build.
-Source builds use the official release update feeds and public key. They can receive official
-updates when a compatible release exists for their architecture. Disable **Automatic Updates**
+Source builds use the official release update feed and public key, so they can receive official
+updates. Disable **Automatic Updates**
 if you want to manage your build yourself. Building the app requires no private signing key.
 Maintainers can use the separate [release guide](RELEASING.md) to publish signed updates.
 
@@ -98,16 +96,17 @@ The menu app is the normal installation. The source tree also supports a standal
 Quit the native app before starting that service. Use either the app's worker or the CLI service
 to manage automatic retries.
 
-From the source checkout:
+From the source checkout, build the `codex-whip` command once, then check the connection and start:
 
 ```sh
-python3 codex_whip.py doctor
-python3 codex_whip.py start
+swift build -c release --package-path engine
+engine/.build/release/codex-whip doctor
+engine/.build/release/codex-whip start
 ```
 
 `doctor` reads Codex daemon metadata. It submits no turn or inference request.
 `start` installs `~/.local/bin/codex-whip` and a user LaunchAgent that starts at login.
-Keep the checkout at its installed path. If `~/.local/bin` is outside your shell's PATH, use the
+Keep the checkout and its build at their installed paths. If `~/.local/bin` is outside your shell's PATH, use the
 full command path.
 
 ```sh
@@ -127,7 +126,8 @@ installation without resetting its activation time, pending timers, or session s
 ```sh
 ~/.local/bin/codex-whip stop
 git pull --ff-only
-python3 codex_whip.py start --preserve-state
+swift build -c release --package-path engine
+~/.local/bin/codex-whip start --preserve-state
 ```
 
 ### Restrict the session scope
@@ -136,7 +136,7 @@ By default, the helper watches loaded top-level terminal sessions on the shared 
 For a CLI installation, select particular session UUIDs:
 
 ```sh
-python3 codex_whip.py start --thread YOUR-SESSION-UUID
+~/.local/bin/codex-whip start --thread YOUR-SESSION-UUID
 ```
 
 Repeat `--thread` to select several sessions. The UUID appears in the Codex thread link or
@@ -244,10 +244,11 @@ Desktop-only and IDE-only sessions are outside the tool's scope.
 
 The integration was verified with Codex CLI and daemon 0.164.0. Their protocol is experimental.
 Older versions that omit explicit ordinary-usage permission leave quota retries waiting with an
-unknown status rather than guessing availability. After a Codex upgrade, run the source tree's read-only check:
+unknown status rather than guessing availability. After a Codex upgrade, run the read-only check
+with the app's bundled engine:
 
 ```sh
-python3 codex_whip.py doctor
+"/Applications/Codex Whip.app/Contents/Helpers/whip-helper" doctor
 ```
 
 Consult the [official Codex app-server documentation](https://learn.chatgpt.com/docs/app-server)

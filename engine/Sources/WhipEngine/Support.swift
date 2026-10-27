@@ -168,18 +168,23 @@ public final class RetrySound {
         self.player = player
     }
 
-    /// afplay follows the current output device and volume, and never takes focus.
+    /// The player command: afplay follows the current output device and volume, and never takes focus.
+    public static func playCommand(_ file: URL) -> (executable: String, arguments: [String], timeout: Double) {
+        ("/usr/bin/afplay", ["-v", "0.4", file.path], 2)
+    }
+
     public static func play(_ file: URL) {
+        let command = playCommand(file)
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/afplay")
-        process.arguments = ["-v", "0.4", file.path]
+        process.executableURL = URL(fileURLWithPath: command.executable)
+        process.arguments = command.arguments
         process.standardInput = FileHandle.nullDevice
         process.standardOutput = FileHandle.nullDevice
         process.standardError = FileHandle.nullDevice
         guard (try? process.run()) != nil else { return }
         let done = DispatchSemaphore(value: 0)
         process.terminationHandler = { _ in done.signal() }
-        if done.wait(timeout: .now() + 2) == .timedOut { process.terminate() }
+        if done.wait(timeout: .now() + command.timeout) == .timedOut { process.terminate() }
     }
 
     public func configure(_ value: Bool) {

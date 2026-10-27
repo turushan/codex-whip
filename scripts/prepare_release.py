@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Sign a built DMG and prepare its GitHub-hosted Sparkle feed using the release Keychain key."""
+"""Sign the universal release DMG and prepare its Sparkle feeds using the release Keychain key.
+
+Apps from 1.11 read updates/appcast.xml. Earlier apps read appcast-arm64.xml or appcast-x86_64.xml,
+so the same signed feed is written to all three names and every installed app finds the update.
+"""
 
 import argparse
 import hashlib
@@ -21,29 +25,28 @@ def main():
     parser.add_argument("--notes", type=Path, help="Plain text release notes to embed in the update dialog")
     args = parser.parse_args()
     archive = args.archive.resolve()
-    match = re.fullmatch(r"Codex-Whip-(arm64|x86_64)\.dmg", archive.name)
-    if not match or not archive.is_file():
-        parser.error("Provide an existing Codex-Whip-arm64.dmg or Codex-Whip-x86_64.dmg")
-    architecture = match[1]
+    if archive.name != "Codex-Whip.dmg" or not archive.is_file():
+        parser.error("Provide the existing universal Codex-Whip.dmg")
     # Releases ship notarized; the Sparkle signature must cover the stapled image.
     if subprocess.run(["xcrun", "stapler", "validate", archive], stdout=subprocess.DEVNULL,
                       stderr=subprocess.DEVNULL).returncode:
         parser.error("The DMG carries no notarization ticket; build it with the Signed release build workflow")
-    version = re.search(r'^VERSION = "([^"]+)"', (ROOT / "codex_whip.py").read_text(), re.M)[1]
+    version = re.search(r'^public let engineVersion = "([^"]+)"',
+                        (ROOT / "engine/Sources/WhipEngine/Version.swift").read_text(), re.M)[1]
     distribution = sparkle.distribution(ROOT)
     public_key = subprocess.check_output([
         distribution / "bin/generate_keys", "--account", sparkle.KEYCHAIN_ACCOUNT, "-p",
     ], text=True).strip()
     if public_key != sparkle.PUBLIC_KEY:
         parser.error("The release Keychain key does not match this app's public update key")
-    staging = ROOT / "build/release" / architecture
+    staging = ROOT / "build/release/universal"
     if staging.exists():
         shutil.rmtree(staging)
     staging.mkdir(parents=True)
     shutil.copy2(archive, staging / archive.name)
     if args.notes:
         shutil.copy2(args.notes, staging / archive.with_suffix(".txt").name)
-    feed = staging / f"appcast-{architecture}.xml"
+    feed = staging / "appcast.xml"
     subprocess.run([
         distribution / "bin/generate_appcast", "--account", sparkle.KEYCHAIN_ACCOUNT,
         "--download-url-prefix", f"{sparkle.REPOSITORY}/releases/download/v{version}/",
@@ -60,29 +63,23 @@ def main():
         feed_version = feed_version or enclosure.get(namespace + "version")
     if enclosure is None or feed_version != version:
         parser.error("The DMG version does not match the source version; rebuild it before releasing")
-    # Sparkle emits an arm64 requirement for ARM-only apps. Intel-compatible
-    # bundles have no hardware restriction (they may run under Rosetta too).
-    hardware = item.findtext(namespace + "hardwareRequirements")
-    if ((architecture == "arm64" and hardware != "arm64")
-            or (architecture == "x86_64" and hardware not in (None, "x86_64"))):
-        parser.error("The DMG architecture does not match its filename")
+    # Sparkle adds a hardware requirement only for single-architecture apps.
+    if item.findtext(namespace + "hardwareRequirements") is not None:
+        parser.error("The DMG is not universal; build it with scripts/build_app.py")
     if not enclosure.get(namespace + "edSignature"):
         parser.error("The update archive was not signed")
     subprocess.run([distribution / "bin/sign_update", "--account", sparkle.KEYCHAIN_ACCOUNT,
                     "--verify", feed], check=True)
     updates = ROOT / "updates"
     updates.mkdir(exist_ok=True)
-    destination = updates / feed.name
-    shutil.copy2(feed, destination)
+    destinations = [updates / name for name in ("appcast.xml", "appcast-arm64.xml", "appcast-x86_64.xml")]
+    for destination in destinations:
+        shutil.copy2(feed, destination)
     checksums = archive.parent / "SHA256SUMS.txt"
-    archives = sorted(archive.parent.glob("Codex-Whip-*.dmg"))
-    checksums.write_text("".join(
-        f"{hashlib.sha256(item.read_bytes()).hexdigest()}  {item.name}\n" for item in archives
-    ))
-    print(f"\nPrepared v{version} {architecture}: {destination}")
-    print("Upload the DMG and SHA256SUMS.txt to the matching GitHub release first.")
-    print(f"Then commit and push {destination.relative_to(ROOT)} so installed apps can see the update.")
-
+    checksums.write_text(f"{hashlib.sha256(archive.read_bytes()).hexdigest()}  {archive.name}\n")
+    print(f"\nPrepared v{version}: " + ", ".join(str(path.relative_to(ROOT)) for path in destinations))
+    print("Upload Codex-Whip.dmg and SHA256SUMS.txt to the matching GitHub release first.")
+    print("Then commit and push the three feeds so installed apps can see the update.")
 
 if __name__ == "__main__":
     main()

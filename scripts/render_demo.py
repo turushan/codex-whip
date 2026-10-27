@@ -19,13 +19,24 @@ from pathlib import Path
 import shutil
 import struct
 import subprocess
-import sys
 import time
 import zlib
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
-from settings import DEFAULT_MESSAGE, DEFAULT_SETTINGS  # noqa: E402
+
+
+def engine_defaults():
+    """The shipped defaults, read from the engine itself so the film never drifts from the app."""
+    scratch = ROOT / "build" / "demo" / "defaults-state"
+    shutil.rmtree(scratch, ignore_errors=True)
+    output = subprocess.check_output(["swift", "run", "--quiet", "--package-path", str(ROOT / "engine"),
+                                      "codex-whip", "--state-dir", str(scratch), "settings"], text=True)
+    shutil.rmtree(scratch, ignore_errors=True)
+    return json.loads(output)["defaults"]
+
+
+DEFAULT_SETTINGS = engine_defaults()
+DEFAULT_MESSAGE = DEFAULT_SETTINGS["message"]
 
 DURATION = 60
 FPS = 60

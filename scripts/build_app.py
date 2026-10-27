@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
-"""Build the self-contained menu bar app and its DMG on macOS.
+"""Build the universal menu bar app and its DMG on macOS.
 
-Builds are ad hoc signed unless --identity names a Developer ID Application
-certificate in the keychain. scripts/notarize.py then notarizes that DMG.
+The Swift engine in engine/ becomes the bundled helper, and both it and the app are built
+for Apple silicon and Intel. Builds are ad hoc signed unless --identity names a Developer ID
+Application certificate in the keychain. scripts/notarize.py then notarizes that DMG.
 """
 
 import argparse
 import hashlib
 import json
-import os
 from pathlib import Path
-import platform
 import plistlib
 import re
 import shutil
@@ -26,6 +25,14 @@ ROOT = Path(__file__).resolve().parents[1]
 NAME = "Codex Whip"
 EXECUTABLE = "CodexWhip"
 BUNDLE_ID = "com.turushan.codex-whip"
+ARCHITECTURES = ("arm64", "x86_64")
+DISK = "Codex-Whip.dmg"
+
+
+def engine_version():
+    """The single version, kept in the engine: engine/Sources/WhipEngine/Version.swift."""
+    text = (ROOT / "engine/Sources/WhipEngine/Version.swift").read_text()
+    return re.search(r'^public let engineVersion = "([^"]+)"', text, re.M)[1]
 
 
 def run(arguments, **kwargs):
@@ -36,8 +43,7 @@ def sign(app, identity):
     """Sign nested code first and the app last, never with --deep.
 
     A Developer ID signature adds the hardened runtime and a secure timestamp,
-    which notarization requires. PyInstaller already signed the libraries inside
-    the helper with the same identity; only its outer signature is renewed here.
+    which notarization requires.
     """
     options = ["--force", "--sign", identity]
     if identity == "-":
@@ -59,15 +65,11 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--skip-install", action="store_true", help="Use existing build dependencies")
     parser.add_argument("--skip-tests", action="store_true", help="Skip tests already run for this source")
-    parser.add_argument("--reuse-helper", action="store_true", help="Reuse an unchanged local helper when rebuilding the native menu")
     parser.add_argument("--identity", default="-",
                         help='Signing identity, such as "Developer ID Application: Name (TEAMID)"; ad hoc by default')
     args = parser.parse_args()
     if sys.platform != "darwin":
         parser.error("Build this macOS app on a Mac")
-    architecture = platform.machine()
-    if architecture not in ("arm64", "x86_64"):
-        parser.error(f"Unsupported build architecture: {architecture}")
     demo = ROOT / "docs/demo/codex-whip.mp4"
     if not demo.is_file():
         parser.error("The bundled demo is missing; use a complete source checkout including docs/demo")
@@ -83,22 +85,12 @@ def main():
         run([interpreter, "-m", "pip", "install", "--disable-pip-version-check",
              "-r", ROOT / "requirements-build.txt"])
     if not args.skip_tests:
-        run([interpreter, "-m", "unittest", "discover", "-s", "tests", "-p", "test_*.py", "-q"])
-    helper_output = build / "helper"
-    frozen_helper = helper_output / "whip-helper"
-    if args.reuse_helper:
-        source_time = max(path.stat().st_mtime for path in ROOT.glob("*.py"))
-        if not frozen_helper.is_file() or frozen_helper.stat().st_mtime < source_time:
-            parser.error("The bundled helper is missing or older than its source; rebuild without --reuse-helper")
-    else:
-        if helper_output.exists():
-            shutil.rmtree(helper_output)
-        run([interpreter, "-m", "PyInstaller", "--noconfirm", "--clean", "--onefile",
-             "--name", "whip-helper",
-             "--distpath", build / "helper", "--workpath", build / "pyinstaller",
-             "--specpath", build / "spec", "--target-arch", architecture,
-             "--add-data", str(ROOT / "assets/sounds/whip.wav") + os.pathsep + "assets/sounds",
-             "--codesign-identity", args.identity, ROOT / "codex_whip.py"])
+        run(["swift", "test", "--package-path", ROOT / "engine"])
+    # One universal engine binary serves as the app's helper and as the codex-whip command.
+    engine = ["swift", "build", "--package-path", str(ROOT / "engine"), "-c", "release",
+              *[flag for arch in ARCHITECTURES for flag in ("--arch", arch)]]
+    run(engine)
+    helper = Path(subprocess.check_output([*engine, "--show-bin-path"], text=True).strip()) / "codex-whip"
     app = output / f"{NAME}.app"
     if app.exists():
         shutil.rmtree(app)
@@ -108,8 +100,13 @@ def main():
     sparkle_distribution = sparkle.distribution(ROOT)
     shutil.copytree(sparkle_distribution / "Sparkle.framework", contents / "Frameworks/Sparkle.framework",
                     symlinks=True)
-    shutil.copy2(build / "helper/whip-helper", contents / "Helpers/whip-helper")
-    version = re.search(r'^VERSION = "([^"]+)"', (ROOT / "codex_whip.py").read_text(), re.M)[1]
+    shutil.copy2(helper, contents / "Helpers/whip-helper")
+    version = engine_version()
+    scratch = build / "defaults-state"
+    shutil.rmtree(scratch, ignore_errors=True)
+    defaults = json.loads(subprocess.check_output([str(helper), "--state-dir", str(scratch), "settings"],
+                                                  text=True))["defaults"]
+    shutil.rmtree(scratch, ignore_errors=True)
     info = {
         "CFBundleDevelopmentRegion": "en",
         "CFBundleDisplayName": NAME,
@@ -126,11 +123,8 @@ def main():
         "LSUIElement": True,
         "NSHighResolutionCapable": True,
         "NSHumanReadableCopyright": "Copyright © 2026 Codex Whip contributors",
-        "WhipDefaultSettings": json.loads(subprocess.check_output([
-            str(interpreter), "-c",
-            "import json; from settings import DEFAULT_SETTINGS; print(json.dumps(DEFAULT_SETTINGS))",
-        ], cwd=ROOT, text=True)),
-        "SUFeedURL": f"{sparkle.FEED_ROOT}/appcast-{architecture}.xml",
+        "WhipDefaultSettings": defaults,
+        "SUFeedURL": f"{sparkle.FEED_ROOT}/appcast.xml",
         "SUPublicEDKey": sparkle.PUBLIC_KEY,
         "SUEnableAutomaticChecks": True,
         "SUAutomaticallyUpdate": True,
@@ -140,13 +134,17 @@ def main():
         "SUEnableSystemProfiling": False,
     }
     (contents / "Info.plist").write_bytes(plistlib.dumps(info))
-    run(["xcrun", "swiftc", "-O", "-swift-version", "5",
-         "-target", f"{architecture}-apple-macosx14.0",
-         "-framework", "AppKit", "-framework", "ServiceManagement",
-         "-framework", "AVKit", "-framework", "AVFoundation",
-         "-F", contents / "Frameworks", "-framework", "Sparkle",
-         "-Xlinker", "-rpath", "-Xlinker", "@executable_path/../Frameworks",
-         *sorted((ROOT / "native").glob("*.swift")), "-o", contents / "MacOS" / EXECUTABLE])
+    slices = []
+    for arch in ARCHITECTURES:
+        slices.append(build / f"{EXECUTABLE}-{arch}")
+        run(["xcrun", "swiftc", "-O", "-swift-version", "5",
+             "-target", f"{arch}-apple-macosx14.0",
+             "-framework", "AppKit", "-framework", "ServiceManagement",
+             "-framework", "AVKit", "-framework", "AVFoundation",
+             "-F", contents / "Frameworks", "-framework", "Sparkle",
+             "-Xlinker", "-rpath", "-Xlinker", "@executable_path/../Frameworks",
+             *sorted((ROOT / "native").glob("*.swift")), "-o", slices[-1]])
+    run(["lipo", "-create", *slices, "-output", contents / "MacOS" / EXECUTABLE])
     iconset = build / "AppIcon.iconset"
     iconset.mkdir(exist_ok=True)
     run(["xcrun", "swift", ROOT / "scripts/make_icon.swift", iconset, ROOT / "assets/AppIcon.png"])
@@ -157,14 +155,12 @@ def main():
     if (ROOT / "licenses").exists():
         shutil.copytree(ROOT / "licenses", contents / "Resources/ThirdPartyLicenses")
     shutil.copy2(sparkle_distribution / "LICENSE", contents / "Resources/ThirdPartyLicenses/Sparkle.txt")
-    license_path = subprocess.check_output([
-        str(interpreter), "-c",
-        "import pathlib,sysconfig; print(pathlib.Path(sysconfig.get_path('stdlib')) / 'LICENSE.txt')",
-    ], text=True).strip()
-    if Path(license_path).is_file():
-        shutil.copy2(license_path, contents / "Resources/ThirdPartyLicenses/Python-runtime.txt")
     sign(app, args.identity)
-    disk = output / f"Codex-Whip-{architecture}.dmg"
+    for arch in ARCHITECTURES:
+        for code in (contents / "MacOS" / EXECUTABLE, contents / "Helpers/whip-helper"):
+            if arch not in subprocess.check_output(["lipo", "-archs", str(code)], text=True).split():
+                raise SystemExit(f"{code.name} is missing its {arch} slice")
+    disk = output / DISK
     disk.unlink(missing_ok=True)
     # The installer window: background, icon positions and the volume icon (scripts/dmg_settings.py).
     # Detaching the scratch image can fail while Spotlight still reads it, so a busy disk gets retries.

@@ -1,21 +1,22 @@
 # Desktop prototype
 
-The source includes an opt-in, command-line Desktop connector. The installed
+The `codex-whip` command includes an opt-in Desktop connector. The installed
 menu bar app continues to watch terminal sessions.
 
 It requires the running macOS Desktop app, Codex CLI's shared local daemon, and
 one explicitly selected local conversation already owned by Desktop.
 
+Build the command from the source checkout with `swift build -c release --package-path engine`.
 Read the conversation's state without sending anything:
 
 ```sh
-python3 desktop_whip.py --thread CONVERSATION_ID doctor
+engine/.build/release/codex-whip desktop --thread CONVERSATION_ID doctor
 ```
 
 Watch future capacity failures in that conversation:
 
 ```sh
-python3 desktop_whip.py --thread CONVERSATION_ID watch
+engine/.build/release/codex-whip desktop --thread CONVERSATION_ID watch
 ```
 
 Stop with Control-C. This foreground prototype installs no login item and uses a

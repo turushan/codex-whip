@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Point the Homebrew cask in turushan/homebrew-tap at a published release.
 
-Reads the version from codex_whip.py and both checksums from the release's own
-SHA256SUMS.txt, so the cask only ever names files that are already downloadable.
-Run it after the GitHub release exists; it commits and pushes the tap.
+Reads the version from the engine and the checksum from the release's own SHA256SUMS.txt,
+so the cask only ever names a file that is already downloadable. Run it after the GitHub
+release exists; it rewrites the cask, commits and pushes the tap.
 """
 
 import argparse
@@ -21,25 +21,51 @@ TAP = "https://github.com/turushan/homebrew-tap.git"
 CASK = "Casks/codex-whip.rb"
 
 
+CASK_TEMPLATE = """cask "codex-whip" do
+  version "{version}"
+  sha256 "{sha256}"
+
+  url "https://github.com/turushan/codex-whip/releases/download/v#{{version}}/Codex-Whip.dmg"
+  name "Codex Whip"
+  desc "Menu bar app that resumes Codex CLI after capacity errors and quota waits"
+  homepage "https://codexwhip.com/"
+
+  livecheck do
+    url "https://raw.githubusercontent.com/turushan/codex-whip/main/updates/appcast.xml"
+    strategy :sparkle
+  end
+
+  auto_updates true
+  depends_on macos: :sonoma
+
+  app "Codex Whip.app"
+
+  zap trash: [
+    "~/Library/Application Support/Codex Whip",
+    "~/Library/Caches/com.turushan.codex-whip",
+    "~/Library/HTTPStorages/com.turushan.codex-whip",
+    "~/Library/Preferences/com.turushan.codex-whip.plist",
+  ]
+end
+"""
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dry-run", action="store_true", help="Show the updated cask without pushing")
     args = parser.parse_args()
-    version = re.search(r'^VERSION = "([^"]+)"', (ROOT / "codex_whip.py").read_text(), re.M)[1]
+    version = re.search(r'^public let engineVersion = "([^"]+)"',
+                        (ROOT / "engine/Sources/WhipEngine/Version.swift").read_text(), re.M)[1]
     sums_url = f"{sparkle.REPOSITORY}/releases/download/v{version}/SHA256SUMS.txt"
     with urllib.request.urlopen(sums_url, timeout=60) as response:
         sums = dict(reversed(line.split()) for line in response.read().decode().splitlines() if line.strip())
-    arm, intel = sums["Codex-Whip-arm64.dmg"], sums["Codex-Whip-x86_64.dmg"]
+    text = CASK_TEMPLATE.format(version=version, sha256=sums["Codex-Whip.dmg"])
+    if args.dry_run:
+        print(text)
+        return
     with tempfile.TemporaryDirectory() as checkout:
         subprocess.run(["git", "clone", "--quiet", "--depth", "1", TAP, checkout], check=True)
         cask = Path(checkout) / CASK
-        text = cask.read_text()
-        text = re.sub(r'version "[^"]+"', f'version "{version}"', text, count=1)
-        text = re.sub(r'arm:   "[0-9a-f]{64}"', f'arm:   "{arm}"', text, count=1)
-        text = re.sub(r'intel: "[0-9a-f]{64}"', f'intel: "{intel}"', text, count=1)
-        if args.dry_run:
-            print(text)
-            return
         cask.write_text(text)
         if not subprocess.run(["git", "-C", checkout, "status", "--porcelain"], capture_output=True,
                               text=True, check=True).stdout:

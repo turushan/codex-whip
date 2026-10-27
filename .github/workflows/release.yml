@@ -1,6 +1,6 @@
 name: Signed release build
 
-# Builds Developer ID signed, notarized and stapled DMGs for a release.
+# Builds the Developer ID signed, notarized and stapled universal DMG for a release.
 # The signing secrets live in the "release" environment, which only main can use.
 # Publishing stays a local step: scripts/prepare_release.py signs the update feed
 # with the Sparkle key, which never leaves the maintainer's Keychain.
@@ -13,11 +13,7 @@ permissions:
 
 jobs:
   signed-dmg:
-    strategy:
-      fail-fast: false
-      matrix:
-        runner: [macos-15, macos-15-intel]
-    runs-on: ${{ matrix.runner }}
+    runs-on: macos-15
     environment: release
     timeout-minutes: 60
     env:
@@ -64,12 +60,12 @@ jobs:
         run: |
           export NOTARY_KEY_PATH="$RUNNER_TEMP/notary.p8"
           echo "$NOTARY_KEY" | base64 --decode > "$NOTARY_KEY_PATH"
-          python3 scripts/notarize.py dist/Codex-Whip-*.dmg
+          python3 scripts/notarize.py dist/Codex-Whip.dmg
           rm "$NOTARY_KEY_PATH"
       - name: Upload the notarized disk image
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
-          name: codex-whip-signed-${{ matrix.runner }}
+          name: codex-whip-signed
           path: |
             dist/*.dmg
             dist/*-notary-log.json
