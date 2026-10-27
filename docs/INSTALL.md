@@ -12,9 +12,13 @@ watching, choose **Start at Login**, or open **Activity**. If macOS needs your a
 item reads **Approve Start at Login…** and opens Login Items in System Settings. Quitting the app
 stops its helper and leaves any Codex turn already running alone.
 
+Enable **Whip Sound** in the menu to hear a short whip crack whenever a retry message is sent.
+It starts off and follows your Mac's volume and mute settings. Scanning and waiting stay silent.
+Turn it off at any time; your choice is saved locally.
+
 Choose **Watch Demo** for an illustrated film of capacity retries, a scheduled quota renewal and an
 early reset announcement. The bundled video includes original sound, with native pause, seek, replay,
-mute and volume controls. Sound starts only when you open the demo;
+mute and volume controls. Demo audio starts only when you open the video;
 the player retains your mute/volume choices during this app session.
 
 The fictional sessions are labeled as a demo and include explicit compressed waits. The whip and

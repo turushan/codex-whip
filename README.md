@@ -28,6 +28,7 @@ When Codex says **“Selected model is at capacity,”** Whip waits, then asks t
 Out of quota? Whip waits for Codex to confirm usage is available again, then continues. Regular renewals and early resets use the same check.
 
 - **Set the pace.** Pick intervals right in the menu. Preview, edit, or reset the retry message.
+- **Hear the nudge.** Optional whip sounds mark each retry. Silent by default.
 - **See the recovery.** A clear 24-hour activity report tracks capacity and quota retries separately.
 - **Keep it running.** Start at Login and optional automatic GitHub updates handle the daily routine.
 

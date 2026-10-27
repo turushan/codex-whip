@@ -5,11 +5,13 @@ struct RetrySettings: Codable, Equatable {
     var retrySeconds: Int
     var scanSeconds: Int
     var message: String
+    var soundEnabled: Bool = false
 
     enum CodingKeys: String, CodingKey {
         case retrySeconds = "retry_seconds"
         case scanSeconds = "scan_seconds"
         case message
+        case soundEnabled = "sound_enabled"
     }
 }
 
@@ -236,9 +238,10 @@ final class PreferencesStore {
     }
 
     private static func decodeObject(_ value: Any) throws -> RetrySettings {
+        let legacyKeys = Set(["retry_seconds", "scan_seconds", "message"])
         guard let object = value as? [String: Any],
-              Set(object.keys) == Set(["retry_seconds", "scan_seconds", "message"]) else {
-            throw PreferencesError("Settings must contain exactly retry_seconds, scan_seconds, and message.")
+              Set(object.keys) == legacyKeys || Set(object.keys) == legacyKeys.union(["sound_enabled"]) else {
+            throw PreferencesError("Settings must contain retry_seconds, scan_seconds, message, and optional sound_enabled.")
         }
         guard let retry = integer(object["retry_seconds"]), (60...86400).contains(retry) else {
             throw PreferencesError("retry_seconds must be an integer from 60 to 86400 seconds.")
@@ -249,7 +252,14 @@ final class PreferencesStore {
         guard let message = object["message"] as? String else {
             throw PreferencesError("message must contain nonblank text of at most 4000 characters.")
         }
-        let settings = RetrySettings(retrySeconds: retry, scanSeconds: scan, message: message)
+        var sound = false
+        if let value = object["sound_enabled"] {
+            guard let number = value as? NSNumber, CFGetTypeID(number) == CFBooleanGetTypeID() else {
+                throw PreferencesError("sound_enabled must be true or false.")
+            }
+            sound = number.boolValue
+        }
+        let settings = RetrySettings(retrySeconds: retry, scanSeconds: scan, message: message, soundEnabled: sound)
         try validate(settings)
         return settings
     }

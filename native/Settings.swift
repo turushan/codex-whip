@@ -22,12 +22,13 @@ final class PreferencesMenuController: NSObject, NSMenuDelegate {
     /// The watcher reads the same settings.json, so a failed read also holds its checks.
     var readFailed: Bool { readError != nil }
 
-    var items: [NSMenuItem] { [retryItem, scanItem, messageItem] }
+    var items: [NSMenuItem] { [retryItem, scanItem, messageItem, soundItem] }
 
     private let store: PreferencesStore
     private let retryItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let scanItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let messageItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+    private let soundItem = NSMenuItem(title: "Whip Sound", action: nil, keyEquivalent: "")
     private let retryMenu = NSMenu(title: "Retry interval")
     private let scanMenu = NSMenu(title: "Check interval")
     private let messageMenu = NSMenu(title: "Retry message")
@@ -40,6 +41,9 @@ final class PreferencesMenuController: NSObject, NSMenuDelegate {
     init(store: PreferencesStore) {
         self.store = store
         super.init()
+        soundItem.target = self
+        soundItem.action = #selector(toggleSound(_:))
+        soundItem.toolTip = "Play a short whip sound when a retry is sent. Uses your Mac’s current volume."
         for (item, menu) in [(retryItem, retryMenu), (scanItem, scanMenu), (messageItem, messageMenu)] {
             menu.autoenablesItems = false
             menu.delegate = self
@@ -101,6 +105,7 @@ final class PreferencesMenuController: NSObject, NSMenuDelegate {
         scanItem.title = "Check Every \(duration(settings.scanSeconds))"
         let isDefault = settings.message == store.defaults.message
         messageItem.title = "Retry Message: \(isDefault ? "Default" : "Custom")"
+        soundItem.state = settings.soundEnabled ? .on : .off
         for item in items { item.isEnabled = isReady }
         populate(retryMenu, choices: retryChoices, selected: settings.retrySeconds,
                  defaultValue: store.defaults.retrySeconds, action: #selector(selectRetry(_:)))
@@ -224,6 +229,12 @@ final class PreferencesMenuController: NSObject, NSMenuDelegate {
     }
 
     @objc private func openMessageEditor(_ sender: NSMenuItem) { editMessage() }
+
+    @objc private func toggleSound(_ sender: NSMenuItem) {
+        guard isReady else { return }
+        do { try update { $0.soundEnabled.toggle() } }
+        catch { /* The main menu displays the local write error. */ }
+    }
 
     @objc private func useDefaultMessage(_ sender: NSMenuItem) {
         guard isReady else { return }

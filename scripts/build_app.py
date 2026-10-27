@@ -66,6 +66,7 @@ def main():
              "--name", "whip-helper",
              "--distpath", build / "helper", "--workpath", build / "pyinstaller",
              "--specpath", build / "spec", "--target-arch", architecture,
+             "--add-data", str(ROOT / "assets/sounds/whip.wav") + os.pathsep + "assets/sounds",
              "--codesign-identity", "-", ROOT / "codex_whip.py"])
     app = output / f"{NAME}.app"
     if app.exists():

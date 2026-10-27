@@ -28,9 +28,10 @@ import time
 from history import History, RETENTION_SECONDS, read_report
 from settings import (DEFAULT_MESSAGE, DEFAULT_SETTINGS, ScanScheduler, SettingsError,
                       read_settings, save_settings, settings_envelope, validate_settings)
+from whip_sound import RetrySound
 
 
-VERSION = "1.9.0"
+VERSION = "1.9.1"
 LABEL = "com.aktay.codex-keep-going"
 INTERVAL = DEFAULT_SETTINGS["retry_seconds"]
 SCAN_INTERVAL = DEFAULT_SETTINGS["scan_seconds"]
@@ -816,10 +817,15 @@ def run_worker(directory, codex_home):
     (directory / "worker.pid").write_text(str(os.getpid()))
     write_log = log_emitter(directory)
     history = History(directory)
+    sound = RetrySound()
 
     def report(event, **fields):
         history.record(event, **fields)
         write_log(event, **fields)
+        try:
+            sound.report(event)
+        except Exception:
+            pass  # Optional feedback must never change a retry's outcome.
     engine = RetryEngine(state, lambda value: atomic_json(state_path, value), report,
                          threads=state.get("threads", []), should_stop=should_stop)
     rpc, last_error, settings_error = None, None, None
@@ -833,6 +839,7 @@ def run_worker(directory, codex_home):
                 current_settings = read_settings(directory)
                 if current_settings != applied_settings:
                     engine.apply_settings(current_settings)
+                    sound.configure(current_settings.get("sound_enabled", False))
                     applied_settings = current_settings
                     report("settings_changed", retry_seconds=current_settings["retry_seconds"],
                            scan_seconds=current_settings["scan_seconds"])
@@ -895,6 +902,7 @@ def run_worker(directory, codex_home):
             if not should_stop():
                 time.sleep(1)
     finally:
+        sound.close()
         if rpc:
             rpc.close()
         (directory / "worker.pid").unlink(missing_ok=True)

@@ -9,7 +9,8 @@ import tempfile
 
 
 DEFAULT_MESSAGE = "Keep using the selected model. Continue the unfinished work."
-DEFAULT_SETTINGS = {"retry_seconds": 180, "scan_seconds": 300, "message": DEFAULT_MESSAGE}
+DEFAULT_SETTINGS = {"retry_seconds": 180, "scan_seconds": 300, "message": DEFAULT_MESSAGE,
+                    "sound_enabled": False}
 
 
 class SettingsError(ValueError):
@@ -17,8 +18,9 @@ class SettingsError(ValueError):
 
 
 def validate_settings(value):
-    if not isinstance(value, dict) or set(value) != set(DEFAULT_SETTINGS):
-        raise SettingsError("Settings must contain exactly retry_seconds, scan_seconds, and message.")
+    legacy_keys = set(DEFAULT_SETTINGS) - {"sound_enabled"}
+    if not isinstance(value, dict) or set(value) not in (legacy_keys, set(DEFAULT_SETTINGS)):
+        raise SettingsError("Settings must contain retry_seconds, scan_seconds, message, and optional sound_enabled.")
     for name, lower, upper in (("retry_seconds", 60, 86400), ("scan_seconds", 15, 3600)):
         number = value[name]
         if isinstance(number, bool) or not isinstance(number, int) or not lower <= number <= upper:
@@ -26,7 +28,10 @@ def validate_settings(value):
     message = value["message"]
     if not isinstance(message, str) or not message.strip() or len(message) > 4000:
         raise SettingsError("message must contain nonblank text of at most 4000 characters.")
-    return dict(value)
+    sound = value.get("sound_enabled", False)
+    if not isinstance(sound, bool):
+        raise SettingsError("sound_enabled must be true or false.")
+    return {**value, "sound_enabled": sound}
 
 
 def read_settings(directory):

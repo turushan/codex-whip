@@ -81,6 +81,17 @@ private struct PreferencesTests {
         try store.write(custom)
         let path = directory.appendingPathComponent("settings.json")
         try check(try store.read() == custom, "Custom intervals and message must round trip")
+        let legacyData = Data(#"{"retry_seconds":777,"scan_seconds":123,"message":"My saved continuation."}"#.utf8)
+        try legacyData.write(to: path)
+        let legacy = try store.read()
+        try check(legacy == RetrySettings(retrySeconds: 777, scanSeconds: 123, message: "My saved continuation."), "Existing preferences must keep their exact values and default sound off")
+        try check(try Data(contentsOf: path) == legacyData, "Reading old preferences must not rewrite them")
+        let audible = try store.update { $0.soundEnabled = true }
+        try check(audible.retrySeconds == legacy.retrySeconds && audible.scanSeconds == legacy.scanSeconds && audible.message == legacy.message, "Enabling sound must preserve all existing preferences")
+        try check(try store.read().soundEnabled, "Sound on must persist as a JSON Boolean")
+        try store.update { $0.soundEnabled = false }
+        try check(try !store.read().soundEnabled, "Sound off must persist")
+        try store.write(custom)
         try check(try metadata(path).st_mode & 0o777 == 0o600, "Preferences must be mode 0600")
         try check(try metadata(directory).st_mode & 0o777 == 0o700, "State directory must be mode 0700")
         for (name, data) in sentinels {
@@ -131,6 +142,10 @@ private struct PreferencesTests {
             #"{"retry_seconds":300,"scan_seconds":60.0,"message":"x"}"#,
             #"{"retry_seconds":300,"scan_seconds":60,"message":5}"#,
             #"{"retry_seconds":300,"scan_seconds":60,"message":null}"#,
+            #"{"retry_seconds":300,"scan_seconds":60,"message":"x","sound_enabled":1}"#,
+            #"{"retry_seconds":300,"scan_seconds":60,"message":"x","sound_enabled":0}"#,
+            #"{"retry_seconds":300,"scan_seconds":60,"message":"x","sound_enabled":null}"#,
+            #"{"retry_seconds":300,"scan_seconds":60,"message":"x","sound_enabled":"true"}"#,
             #"{"retry_seconds":300,"scan_seconds":60,"message":" \n\t\u001c\u0085\u00a0\u3000"}"#
         ]
         for (index, document) in invalidDocuments.enumerated() {
@@ -150,6 +165,7 @@ private struct PreferencesTests {
         try fm.createDirectory(at: fixtures, withIntermediateDirectories: true)
         for (name, settings) in [
             ("custom", custom),
+            ("sound-on", RetrySettings(retrySeconds: 777, scanSeconds: 123, message: "Same custom message", soundEnabled: true)),
             ("minimum", RetrySettings(retrySeconds: 60, scanSeconds: 15, message: String(repeating: "😀", count: 4000))),
             ("maximum", RetrySettings(retrySeconds: 86400, scanSeconds: 3600, message: String(repeating: "e\u{301}", count: 2000)))
         ] {

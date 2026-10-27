@@ -27,6 +27,7 @@ The app is named Codex Whip; the command and repository are `codex-whip`.
 - Show quota waiting/check status in the menu and separate quota/capacity counts in Activity. Account permission allows a guarded attempt, without guaranteeing selected-model availability.
 - The default retry message is "Keep using the selected model. Continue the unfinished work." Preserve saved custom intervals and messages.
 - Keep a bounded retry-message preview with Edit Message… and Use Default Message. The latter saves immediately; the compact editor's Use Default fills a draft that requires Save. Cancel or closing discards unsaved text.
+- Offer a Whip Sound toggle, off by default. Play one short original sound after each accepted retry, respecting system volume and mute.
 - Read and write local `settings.json` directly, using atomic saves and authoritative defaults bundled with the app. Reflect CLI preference edits when the menu opens.
 - Use a blue blueprint grid and a dimensional braided whip for the large app icon. Keep the menu bar glyph monochrome.
 - Keep the README short and visual, with direct downloads, real screenshots, three setup steps, and collapsed build details.

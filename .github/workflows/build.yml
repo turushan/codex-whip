@@ -25,11 +25,13 @@ jobs:
           python-version: "3.13"
       - name: Build the app and disk image
         run: python3 scripts/build_app.py
-      - name: Verify native preference storage
+      - name: Verify native preferences and sound toggle
         shell: bash
         run: |
           xcrun swiftc -O -swift-version 5 native/Preferences.swift scripts/test_preferences.swift -o "$RUNNER_TEMP/whip-prefs-test"
           "$RUNNER_TEMP/whip-prefs-test"
+          xcrun swiftc -O -swift-version 5 native/Preferences.swift native/Settings.swift scripts/test_sound_menu.swift -o "$RUNNER_TEMP/whip-sound-menu-test"
+          "$RUNNER_TEMP/whip-sound-menu-test"
       - name: Check the bundled helper in an isolated directory
         shell: bash
         run: |

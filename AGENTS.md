@@ -15,6 +15,7 @@ A local macOS menu bar app and command-line helper for retrying Codex terminal c
 - Keep quota and capacity Activity counters separate. Do not log or store account identities in history; any private account binding stays in retry state.
 - Keep the native app minimal: status, pause/resume, Start at Login, retry/check interval submenus, retry-message preview/editor/default action, Activity, Watch Demo, update controls, and Quit.
 - Read and save preferences locally in Swift. Generate bundled defaults from settings.py; do not start the Python helper to open or edit preferences.
+- Keep Whip Sound off by default. Play it asynchronously only for live accepted retries, never for scans, uncertain sends, or reconstructed history.
 - Count retry recovery after two minutes of uninterrupted observed activity, or successful completion sooner.
 - The app owns its helper process and login item. The optional CLI service is a separate installation mode.
 - Retain history, pending timers, and the send journal when updating an installed helper.

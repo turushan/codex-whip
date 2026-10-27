@@ -36,6 +36,10 @@ validation and save errors beside the text, with native keyboard behavior and Co
 save. Opening the menu reads local `settings.json` directly; interval choices and message saves
 write it atomically. Defaults come from the app bundle, and existing custom values remain intact.
 
+Whip Sound is a native checkable menu item beside the retry preferences. It is off by default and
+saves immediately. A short whip crack marks each sent retry without changing focus or system volume.
+Checks, waiting, uncertain sends, and restored activity remain silent.
+
 Keep Check for Updates… and a checkable Automatic Updates item in the same native menu treatment.
 Sparkle owns its standard update and relaunch dialogs. Public GitHub feeds and downloads support
 in-app update delivery.

@@ -49,6 +49,18 @@ class SettingsTests(unittest.TestCase):
         self.assertFalse(self.directory.exists())
         self.assertEqual(helper.DEFAULT_SETTINGS["retry_seconds"], 180)
         self.assertEqual(helper.DEFAULT_SETTINGS["scan_seconds"], 300)
+        self.assertIs(helper.DEFAULT_SETTINGS["sound_enabled"], False)
+
+    def test_legacy_preferences_keep_custom_values_and_default_sound_off(self):
+        self.directory.mkdir()
+        legacy = {"retry_seconds": 777, "scan_seconds": 123, "message": "Keep my custom message."}
+        path = self.directory / "settings.json"
+        path.write_text(json.dumps(legacy))
+        original = path.read_bytes()
+        self.assertEqual(helper.read_settings(self.directory), {**legacy, "sound_enabled": False})
+        self.assertEqual(path.read_bytes(), original)
+        helper.save_settings(self.directory, {**helper.read_settings(self.directory), "sound_enabled": True})
+        self.assertEqual(helper.read_settings(self.directory), {**legacy, "sound_enabled": True})
 
     def test_configure_persists_private_settings_without_touching_state_or_history(self):
         self.directory.mkdir()
@@ -82,6 +94,7 @@ class SettingsTests(unittest.TestCase):
             preferences(scan_seconds=3601), preferences(scan_seconds=math.nan),
             preferences(retry_seconds=math.inf), preferences(message=" \n\t"),
             preferences(message="x" * 4001), preferences(message=False),
+            *[preferences(sound_enabled=value) for value in (0, 1, None, "true", [], {})],
             {**preferences(), "extra": "unknown"}, {"retry_seconds": 300}, [], None,
         ]
         for value in invalid:
