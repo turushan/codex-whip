@@ -3,7 +3,10 @@
 
 The storyboard lives in scripts/demo/video/Film.swift. This wrapper compiles the
 video and audio renderers, writes the shared timeline, renders the score, renders
-the picture in parallel chunks, and encodes the README and app assets.
+the picture in parallel chunks, and encodes the README and app assets into the
+ignored build/demo/out. `--publish` then copies the last full render into docs/demo.
+Each publish adds the film and the GIF to Git history, about 20 MB, so it belongs in a
+release commit, not in every revision of the film.
 """
 
 from __future__ import annotations
@@ -28,7 +31,9 @@ DURATION = 60
 FPS = 60
 WIDTH, HEIGHT = 1920, 1080
 WORK = ROOT / "build" / "demo"
+OUTPUT = WORK / "out"
 TARGET = ROOT / "docs" / "demo"
+PUBLISHED = ("codex-whip.mp4", "codex-whip.gif", "poster.png")
 # The README loop: the reveal, then the capacity story back to work.
 GIF_RANGE = (8.0, 22.0)
 GIF_FPS = 15
@@ -144,18 +149,39 @@ def filmstrip(ffmpeg: str, stills: Path, times: tuple[float, ...], target: Path,
         "-map", "[out]", "-frames:v", "1", str(target))
 
 
+def publish() -> None:
+    """Copy the last full render into docs/demo, after checking it against that render's manifest."""
+    manifest = OUTPUT / "render-manifest.json"
+    if not manifest.is_file():
+        raise SystemExit("No full render to publish. Run python3 scripts/render_demo.py first.")
+    expected = json.loads(manifest.read_text())["sha256"]
+    for name in PUBLISHED:
+        source = OUTPUT / name
+        if not source.is_file() or hashlib.sha256(source.read_bytes()).hexdigest() != expected.get(name):
+            raise SystemExit(f"{source.relative_to(ROOT)} does not match its render. Render again before publishing.")
+    TARGET.mkdir(parents=True, exist_ok=True)
+    for name in PUBLISHED:
+        shutil.copy2(OUTPUT / name, TARGET / name)
+        print(f"{(TARGET / name).relative_to(ROOT)}: {(TARGET / name).stat().st_size:,} bytes")
+    print("Commit these with the release that ships them.")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--jobs", type=int, default=max(2, min(6, (os.cpu_count() or 4) // 2)),
                         help="parallel render processes")
     parser.add_argument("--preview", action="store_true", help="fast encode into build/demo only")
+    parser.add_argument("--publish", action="store_true",
+                        help="copy the last full render into docs/demo, in a release commit, without rendering")
     args = parser.parse_args()
+    if args.publish:
+        publish()
+        return
     ffmpeg = shutil.which("ffmpeg")
     if not ffmpeg:
         raise SystemExit("ffmpeg is required to regenerate media (brew install ffmpeg).")
     began = time.monotonic()
-    WORK.mkdir(parents=True, exist_ok=True)
-    TARGET.mkdir(parents=True, exist_ok=True)
+    OUTPUT.mkdir(parents=True, exist_ok=True)
     video, audio = compile_renderers()
 
     plan = WORK / "plan.json"
@@ -165,7 +191,7 @@ def main() -> None:
 
     print(f"Rendering {DURATION * FPS} frames in {args.jobs} processes…", flush=True)
     chunks = render_chunks(ffmpeg, video, args.jobs, 0, DURATION, FPS, WORK / "chunks")
-    film = (WORK / "preview.mp4") if args.preview else (TARGET / "codex-whip.mp4")
+    film = (WORK / "preview.mp4") if args.preview else (OUTPUT / "codex-whip.mp4")
     run(ffmpeg, "-hide_banner", "-loglevel", "error", "-y",
         "-f", "concat", "-safe", "0", "-i", str(chunks[0].parent / "chunks.txt"), "-i", str(score),
         "-map", "0:v", "-map", "1:a",
@@ -176,6 +202,8 @@ def main() -> None:
         "-profile:v", "high", "-level", "4.2", "-x264-params", "aq-mode=3:deblock=-1,-1",
         "-c:a", "aac_at", "-b:a", "256k", "-t", str(DURATION), "-shortest", "-movflags", "+faststart",
         "-metadata", f"title={TITLE}", "-metadata", f"comment={DESCRIPTION}", str(film))
+    # The lossless chunks fill gigabytes and are rendered fresh every time.
+    shutil.rmtree(WORK / "chunks", ignore_errors=True)
 
     stills = WORK / "stills"
     shutil.rmtree(stills, ignore_errors=True)
@@ -191,13 +219,14 @@ def main() -> None:
             "-filter_complex", f"scale={GIF_WIDTH}:-1:flags=lanczos,split[a][b];"
             "[a]palettegen=max_colors=128:stats_mode=diff[p];"
             "[b][p]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle",
-            "-loop", "0", str(TARGET / "codex-whip.gif"))
+            "-loop", "0", str(OUTPUT / "codex-whip.gif"))
+        shutil.rmtree(WORK / "gif", ignore_errors=True)
         poster = WORK / "poster"
         shutil.rmtree(poster, ignore_errors=True)
         run(*film_arguments(video), "--grain", "0", "stills", f"{POSTER_TIME:.3f}", str(poster))
         run(ffmpeg, "-hide_banner", "-loglevel", "error", "-y", "-i", str(poster / f"still-{POSTER_TIME:06.3f}.png"),
-            "-vf", "scale=1280:-1:flags=lanczos", str(TARGET / "poster.png"))
-        embed_origin(TARGET / "poster.png")
+            "-vf", "scale=1280:-1:flags=lanczos", str(OUTPUT / "poster.png"))
+        embed_origin(OUTPUT / "poster.png")
 
     manifest = {
         "duration_seconds": DURATION,
@@ -216,13 +245,18 @@ def main() -> None:
         "session": "Synthetic; typing illustrated, time compressed. No session files, identifiers or inference requests. "
                    "The recreated post is followed by a separate Codex quota confirmation; the app does not monitor posts.",
         "sha256": {path.name: hashlib.sha256(path.read_bytes()).hexdigest()
-                   for path in (film, TARGET / "codex-whip.gif", TARGET / "poster.png") if path.exists()},
+                   for path in (film, OUTPUT / "codex-whip.gif", OUTPUT / "poster.png") if path.exists()},
     }
     (WORK / "render-manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
-    for path in (film, TARGET / "codex-whip.gif", TARGET / "poster.png"):
+    if not args.preview:
+        # publish() checks the files it copies against this record of the full render.
+        (OUTPUT / "render-manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+    for path in (film, OUTPUT / "codex-whip.gif", OUTPUT / "poster.png"):
         if path.exists() and (not args.preview or path == film):
             print(f"{path.relative_to(ROOT)}: {path.stat().st_size:,} bytes")
     print(f"Review: build/demo/contact-sheet.png and build/demo/whip-filmstrip.png · {time.monotonic() - began:.0f} s")
+    if not args.preview:
+        print("Publish into docs/demo with --publish, in the release commit that ships this film.")
 
 
 if __name__ == "__main__":

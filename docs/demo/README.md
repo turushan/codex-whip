@@ -49,13 +49,15 @@ the AudioToolbox AAC encoder (`aac_at`). FFmpeg is needed only to regenerate
 media, not to build or run the app.
 
 ```sh
-python3 scripts/render_demo.py
+python3 scripts/render_demo.py            # render into the ignored build/demo/out
+python3 scripts/render_demo.py --publish  # copy that render into docs/demo
 ```
 
 The wrapper reads the shared message and interval defaults from `settings.py`,
 compiles both renderers, writes the timeline and sound cues to
 `build/demo/plan.json`, renders the score from that plan, renders the picture in
-parallel chunks and writes:
+parallel chunks, deletes the chunks once they are encoded and writes these into
+`build/demo/out`:
 
 - `codex-whip.mp4`: 1920×1080, 60 fps, H.264 High with BT.709 primaries and
   matrix, AAC 256 kbps stereo at 48 kHz, fast start. The sRGB transfer tag is
@@ -65,6 +67,12 @@ parallel chunks and writes:
   for the README.
 - `poster.png`: the closing frame with portable origin metadata, used as the
   reduced-motion still.
+
+`--publish` copies the last full render into `docs/demo`, where the README and
+the app bundle read it, after checking each file against that render's manifest.
+Every published film and GIF stays in Git history for good, about 20 MB a time,
+so revise the film as often as needed in `build/demo/out` and publish it once, in
+the release commit that ships it.
 
 `--preview` writes a faster encode to `build/demo/preview.mp4` instead. Ignored
 `build/demo/` also holds the score, its loudness report, review stills, a
