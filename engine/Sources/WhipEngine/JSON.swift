@@ -381,6 +381,12 @@ extension JSON {
 
     private static func writeString(_ value: String, into output: inout String, asciiOnly: Bool) {
         output += "\""
+        // Most strings need no escaping; copy those in one step, which keeps large payloads fast.
+        if value.utf8.allSatisfy({ $0 >= 0x20 && $0 != 0x22 && $0 != 0x5C && (!asciiOnly || $0 < 0x7F) }) {
+            output += value
+            output += "\""
+            return
+        }
         for scalar in value.unicodeScalars {
             switch scalar {
             case "\"": output += "\\\""
