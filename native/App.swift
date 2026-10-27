@@ -503,9 +503,6 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
         updateNoticeItem.isHidden = true
         updateNoticeSeparator.isHidden = true
         menu.addItem(updateNoticeSeparator)
-        let title = NSMenuItem(title: appName, action: nil, keyEquivalent: "")
-        title.isEnabled = false
-        menu.addItem(title)
         statusRow.isEnabled = false
         menu.addItem(statusRow)
         nextRetryRow.isEnabled = false
