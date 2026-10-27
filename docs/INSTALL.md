@@ -69,9 +69,9 @@ from the menu after the update.
 
 Requirements:
 
-- macOS with Xcode command-line tools, including the Swift compiler.
-- Python 3.9 or later.
-- Internet access for pinned Python dependencies and the checksum-verified Sparkle framework.
+- macOS with Xcode, which builds the universal engine and app.
+- Python 3.9 or later, which runs the build script and the installer tool `dmgbuild`.
+- Internet access for the pinned `dmgbuild` packages and the checksum-verified Sparkle framework.
 
 From a clone of the repository:
 

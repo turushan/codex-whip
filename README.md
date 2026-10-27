@@ -80,7 +80,7 @@ Whip talks only to the Codex daemon on your Mac, over its local socket. Settings
 <details>
 <summary><strong>Build it yourself</strong></summary>
 
-Requires a Mac, Xcode command-line tools, and Python 3.9+.
+Requires a Mac with Xcode, and Python 3.9+ for the build script.
 
 ```sh
 git clone https://github.com/turushan/codex-whip.git
@@ -88,7 +88,7 @@ cd codex-whip
 python3 scripts/build_app.py
 ```
 
-The app and DMG appear in `dist/`, ad hoc signed. Official releases are signed and notarized by the [release workflow](docs/RELEASING.md).
+The universal app and DMG appear in `dist/`, ad hoc signed. The engine is the Swift package in `engine/`; `swift test --package-path engine` runs its tests. Official releases are signed and notarized by the [release workflow](docs/RELEASING.md).
 
 </details>
 
