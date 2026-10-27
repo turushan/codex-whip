@@ -240,7 +240,8 @@ The native app uses its own login item.
 Open Codex CLI first. The helper expects the shared daemon's local control socket at
 `$CODEX_HOME/app-server-control/app-server-control.sock`, with `~/.codex` as the default home.
 An older standalone CLI process or `codex --no-daemon` session without this socket is unsupported.
-Desktop-only and IDE-only sessions are outside the tool's scope.
+Codex Whip works with Codex CLI only. Conversations in the ChatGPT desktop app and in IDE
+extensions are outside its scope.
 
 The integration was verified with Codex CLI and daemon 0.164.0. Their protocol is experimental.
 Older versions that omit explicit ordinary-usage permission leave quota retries waiting with an

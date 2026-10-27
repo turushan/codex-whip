@@ -13,9 +13,6 @@ public struct Pending: Equatable, Sendable {
     public var quotaCheckedAt: Double?
     /// A private hash of the observed account, never logged or written to history.
     public var accountBinding: String?
-    public var controlBackend: String?
-    public var controlOwner: String?
-    public var controlSettings: String?
 
     public init(turnID: String, model: String, effort: String?, detectedAt: Double?, waitStartedAt: Double?,
                 dueAt: Double, kind: String? = nil) {
@@ -39,9 +36,6 @@ public struct Pending: Equatable, Sendable {
         value["quota_status"] = quotaStatus.map(JSON.string)
         value["quota_checked_at"] = quotaCheckedAt.map(JSON.double)
         value["account_binding"] = accountBinding.map(JSON.string)
-        value["control_backend"] = controlBackend.map(JSON.string)
-        value["control_owner"] = controlOwner.map(JSON.string)
-        value["control_settings"] = controlSettings.map(JSON.string)
         return .object(value)
     }
 
@@ -62,9 +56,6 @@ public struct Pending: Equatable, Sendable {
         quotaStatus = json["quota_status"]?.string
         quotaCheckedAt = json["quota_checked_at"]?.number
         accountBinding = json["account_binding"]?.string
-        controlBackend = json["control_backend"]?.string
-        controlOwner = json["control_owner"]?.string
-        controlSettings = json["control_settings"]?.string
     }
 }
 
@@ -77,7 +68,6 @@ public struct Attempt: Equatable, Sendable {
     public var reason: String?
     public var capacityAt: Double?
     public var quotaAt: Double?
-    public var clientMessageID: String?
     public var retryTurnID: String?
     public var resultStatus: String?
     public var resultAt: Double?
@@ -107,7 +97,6 @@ public struct Attempt: Equatable, Sendable {
         value["reason"] = reason.map(JSON.string)
         value["capacity_at"] = capacityAt.map(JSON.double)
         value["quota_at"] = quotaAt.map(JSON.double)
-        value["client_message_id"] = clientMessageID.map(JSON.string)
         value["retry_turn_id"] = retryTurnID.map(JSON.string)
         value["result_status"] = resultStatus.map(JSON.string)
         value["result_at"] = resultAt.map(JSON.double)
@@ -125,7 +114,6 @@ public struct Attempt: Equatable, Sendable {
                   reason: json["reason"]?.string)
         capacityAt = json["capacity_at"]?.number
         quotaAt = json["quota_at"]?.number
-        clientMessageID = json["client_message_id"]?.string
         retryTurnID = json["retry_turn_id"]?.string
         resultStatus = json["result_status"]?.string
         resultAt = json["result_at"]?.number
@@ -158,8 +146,6 @@ public final class RetryState {
     public var lastError: String?
     public var lastScanAt: Double?
     public var sessions: JSON?
-    /// Set only by the Desktop prototype's separate journal.
-    public var controlBackend: String?
 
     public init(enabledAt: Double = Date().timeIntervalSince1970, threads: [String] = []) {
         version = 1
@@ -180,7 +166,6 @@ public final class RetryState {
         lastError = json["last_error"]?.string
         lastScanAt = json["last_scan_at"]?.number
         sessions = json["sessions"]
-        controlBackend = json["control_backend"]?.string
     }
 
     public var json: JSON {
@@ -191,7 +176,6 @@ public final class RetryState {
         ]
         value["last_scan_at"] = lastScanAt.map(JSON.double)
         value["sessions"] = sessions
-        value["control_backend"] = controlBackend.map(JSON.string)
         return .object(value)
     }
 

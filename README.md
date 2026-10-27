@@ -92,6 +92,6 @@ The universal app and DMG appear in `dist/`, ad hoc signed. The engine is the Sw
 
 </details>
 
-[How it works in detail](docs/INSTALL.md#what-gets-retried) · [Settings & privacy](docs/INSTALL.md#activity-and-local-files) · [Experimental Desktop connector](docs/DESKTOP.md) · [MIT license](LICENSE)
+[How it works in detail](docs/INSTALL.md#what-gets-retried) · [Settings & privacy](docs/INSTALL.md#activity-and-local-files) · [MIT license](LICENSE)
 
 <sub>Codex Whip is in beta and improving. It is an unofficial companion to Codex CLI and needs its shared local daemon. Model availability still depends on OpenAI.</sub>

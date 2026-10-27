@@ -147,7 +147,7 @@ public final class RetryEngine {
                 continue
             }
             if let current = pending, current.model != thread["model"]?.string
-                || current.effort != thread["reasoningEffort"]?.string || !sameControlContext(thread, current) {
+                || current.effort != thread["reasoningEffort"]?.string {
                 try cancel(id, reason: "selected model or session settings changed")
                 continue
             }
@@ -159,11 +159,6 @@ public final class RetryEngine {
                 if kind == "quota" {
                     created.kind = "quota"
                     created.quotaStatus = "unknown"
-                }
-                if thread["controlBackend"]?.string == "desktop-ipc" {
-                    created.controlBackend = "desktop-ipc"
-                    created.controlOwner = thread["controlOwner"]?.string
-                    created.controlSettings = thread["controlSettingsFingerprint"]?.string
                 }
                 state.pending[id] = created
                 pending = created
@@ -177,8 +172,7 @@ public final class RetryEngine {
                 if now >= current.dueAt && (retryAfter[id] ?? 0) <= now { quotaCandidates.append((id, false)) }
                 continue
             }
-            let desktopBackoff = current.controlBackend == "desktop-ipc" && (retryAfter[id] ?? 0) > now
-            if now < current.dueAt || desktopBackoff { continue }
+            if now < current.dueAt { continue }
             try sendRetry(rpc, id, current, now: now)
         }
         if !quotaCandidates.isEmpty && !shouldStop() {
@@ -253,7 +247,6 @@ public final class RetryEngine {
     private func unchanged(_ thread: JSON, _ turn: JSON?, _ pending: Pending, kind: String) -> Bool {
         eligible(thread) && failureKind(turn) == kind && turn?["id"]?.string == pending.turnID
             && thread["model"]?.string == pending.model && thread["reasoningEffort"]?.string == pending.effort
-            && sameControlContext(thread, pending)
     }
 
     private func sendRetry(_ rpc: RPCClient, _ id: String, _ given: Pending, now: Double) throws {
@@ -312,31 +305,13 @@ public final class RetryEngine {
         // Commit before sending. A crash or disconnect must never cause a duplicate.
         var attempt = Attempt(turnID: pending.turnID, at: now, outcome: "uncertain", kind: kind)
         if kind == "quota" { attempt.quotaAt = pending.detectedAt ?? now } else { attempt.capacityAt = pending.detectedAt ?? now }
-        if pending.controlBackend == "desktop-ipc" { attempt.clientMessageID = UUID().uuidString.lowercased() }
-        let previousAttempt = state.handled[id]
         state.handled[id] = attempt
         state.pending[id] = nil
         try save(state)
         if shouldStop() { return }
         let result: JSON
         do {
-            var parameters: JSON = ["threadId": .string(id), "input": [["type": "text", "text": .string(message)]]]
-            if let messageID = attempt.clientMessageID { parameters["clientUserMessageId"] = .string(messageID) }
-            result = try rpc.call("turn/start", parameters)
-        } catch let error as RPCError where error.kind == .deferred {
-            state.pending[id] = pending
-            state.handled[id] = previousAttempt
-            retryAfter[id] = now + min(30, scanInterval)
-            try save(state)
-            emit("retry_deferred", ["thread_id": .string(id), "reason": "Desktop preflight is temporarily unavailable"])
-            return
-        } catch let error as RPCError where error.kind == .notSubmitted {
-            attempt.outcome = "cancelled"
-            attempt.reason = "Desktop state changed before submission"
-            state.handled[id] = attempt
-            try save(state)
-            emit("cancelled", ["thread_id": .string(id), "reason": .string(attempt.reason!)])
-            return
+            result = try rpc.call("turn/start", ["threadId": .string(id), "input": [["type": "text", "text": .string(message)]]])
         } catch {
             emit("uncertain", ["thread_id": .string(id), "turn_id": .string(attempt.turnID), "kind": .string(kind)])
             throw error

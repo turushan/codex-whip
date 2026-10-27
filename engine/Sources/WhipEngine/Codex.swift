@@ -10,14 +10,8 @@ public struct RPCError: Error, CustomStringConvertible, LocalizedError {
         case transport
         /// A rejected request, while the transport remains usable.
         case request
-        /// A Desktop conversation with no active owner, a kind of rejected request.
-        case noOwner
         /// The owning worker is stopping; this is not a connection failure.
         case cancelled
-        /// A local preflight refused a retry before any submission was attempted.
-        case notSubmitted
-        /// A temporary preflight failure; the pending retry can be checked again.
-        case deferred
     }
 
     public let kind: Kind
@@ -31,12 +25,11 @@ public struct RPCError: Error, CustomStringConvertible, LocalizedError {
     public static func transport(_ message: String) -> RPCError { RPCError(.transport, message) }
     public static func request(_ message: String) -> RPCError { RPCError(.request, message) }
 
-    public var isRequest: Bool { kind == .request || kind == .noOwner }
-    public var isNotSubmitted: Bool { kind == .notSubmitted || kind == .deferred }
+    public var isRequest: Bool { kind == .request }
     public var errorDescription: String? { description }
 }
 
-/// One Codex connection: the terminal daemon's control socket, or the Desktop facade.
+/// One Codex connection: the CLI daemon's control socket.
 public protocol RPCClient: AnyObject {
     func call(_ method: String, _ params: JSON) throws -> JSON
     /// Releases the connection. The owner calls it once, when it stops using the client.
@@ -131,13 +124,12 @@ public func watchable(_ thread: JSON) -> Bool {
     let source = thread["source"]?.string
     let originator = thread["originator"]?.string
     let terminal = ["cli", "vscode", "appServer"].contains(source ?? "") && (source == "cli" || originator == "codex-tui")
-    let desktop = source == "desktop" && originator == "codex-desktop" && thread["controlBackend"]?.string == "desktop-ipc"
     let threadSource = thread["threadSource"]
     return !(thread["parentThreadId"]?.isTruthy ?? false)
         && !(thread["ephemeral"]?.isTruthy ?? false)
         && (threadSource == nil || threadSource == .null || threadSource?.string == "user")
         && thread["source"]?.object == nil
-        && (terminal || desktop)
+        && terminal
         && thread["canAcceptDirectInput"] == .bool(true)
         && (thread["model"]?.isTruthy ?? false)
 }
@@ -146,9 +138,3 @@ public func eligible(_ thread: JSON) -> Bool {
     watchable(thread) && ["idle", "systemError"].contains(thread["status"]?["type"]?.string ?? "")
 }
 
-func sameControlContext(_ thread: JSON, _ pending: Pending) -> Bool {
-    [("controlBackend", pending.controlBackend), ("controlOwner", pending.controlOwner),
-     ("controlSettingsFingerprint", pending.controlSettings)].allSatisfy { field, saved in
-        (thread[field] ?? .null) == JSON(saved)
-    }
-}

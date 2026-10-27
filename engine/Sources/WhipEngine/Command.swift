@@ -18,7 +18,6 @@ public enum Command {
           report      Show capacity and retry activity (--hours 1-48, default 24)
           settings    Read settings and defaults as JSON
           configure   Save validated settings from JSON on stdin
-          desktop     The opt-in Desktop prototype (codex-whip desktop --help)
           prepare     Prepare saved state for the native app (internal)
           dashboard   Read the native app dashboard as JSON (internal)
           version     Print the engine version
@@ -59,9 +58,6 @@ public enum Command {
             let options = Array(rest)
             let directory = Paths.resolve(stateDirectory)
             let home = Paths.resolve(codexHome)
-            if command == "desktop" {
-                return DesktopCommand.main(options, codexHome: home, stdout: stdout, stderr: stderr)
-            }
             let known = ["start", "stop", "status", "doctor", "logs", "report", "prepare", "dashboard", "settings",
                          "configure", "_run", "version"]
             guard known.contains(command) else {
