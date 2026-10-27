@@ -397,6 +397,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        installMainMenu()
         let environment = ProcessInfo.processInfo.environment
         let qaBundle = isIsolatedQABundle()
         let qaState = qaBundle ? Bundle.main.object(forInfoDictionaryKey: "KeepGoingQAStateDirectory") as? String : nil
@@ -484,6 +485,36 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
            let seconds = Double(arguments[index + 1]), seconds > 0, seconds.isFinite {
             DispatchQueue.main.asyncAfter(deadline: .now() + seconds) { NSApp.terminate(nil) }
         }
+    }
+
+    // An accessory app never shows a menu bar, but AppKit still matches key
+    // equivalents against its main menu. These standard items give the app's
+    // windows Command-W, Command-Q and the usual editing shortcuts through the
+    // responder chain.
+    private func installMainMenu() {
+        let mainMenu = NSMenu()
+        func add(_ title: String, _ items: [NSMenuItem]) {
+            let submenu = NSMenu(title: title)
+            for item in items { submenu.addItem(item) }
+            let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+            item.submenu = submenu
+            mainMenu.addItem(item)
+        }
+        add(appName, [NSMenuItem(title: "Quit \(appName)", action: #selector(NSApplication.terminate(_:)),
+                                 keyEquivalent: "q")])
+        add("File", [NSMenuItem(title: "Close", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")])
+        let redo = NSMenuItem(title: "Redo", action: Selector(("redo:")), keyEquivalent: "z")
+        redo.keyEquivalentModifierMask = [.command, .shift]
+        add("Edit", [
+            NSMenuItem(title: "Undo", action: Selector(("undo:")), keyEquivalent: "z"),
+            redo,
+            .separator(),
+            NSMenuItem(title: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x"),
+            NSMenuItem(title: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c"),
+            NSMenuItem(title: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v"),
+            NSMenuItem(title: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a"),
+        ])
+        NSApp.mainMenu = mainMenu
     }
 
     private func buildMenu() {

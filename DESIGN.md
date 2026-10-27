@@ -6,6 +6,7 @@ right (2.6-point stroke), and a filled rope outline tapering from a thick attach
 The tail curls away from the grip, preserving a visible gap at actual menu size. AppKit supplies its
 native tint and highlighted appearance. Keep the accessible name "Codex Whip". Preserve system typography, spacing,
 separators, keyboard behavior, and accessibility. The app follows light and dark system appearance.
+An invisible main menu gives the app's windows Command-W, Command-Q, and the standard Edit shortcuts.
 
 The large application icon uses a dimensional braided brown whip over a luminous cyan-to-blue blueprint tile, with fine
 grid lines, construction guides, a beveled rim, and an open curl. Preserve the generated source PNG,
