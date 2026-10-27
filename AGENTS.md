@@ -13,7 +13,7 @@ A local macOS menu bar app and command-line helper for retrying Codex terminal c
 - Default to five-minute checks and three-minute capacity retries. Due capacity timers and retry health observations run independently of discovery checks. Preserve saved custom settings.
 - Quota recovery requires explicit ordinaryUsageAllowed permission and the same observed account. Unknown quota status or account changes hold retries. Never infer permission from percentages or reset times, consume reset credits, or switch accounts/models.
 - Keep quota and capacity Activity counters separate. Do not log or store account identities in history; any private account binding stays in retry state.
-- Keep the native app minimal: status, pause/resume, Start at Login, retry/check interval submenus, retry-message preview/editor/default action, Activity, Watch Demo, update controls, and Quit.
+- Keep the native app minimal: status, pause/resume, Start at Login, retry/check interval submenus, retry-message preview/editor/default action, Activity, Watch Demo, update controls, About, and Quit.
 - Read and save preferences locally in Swift. Generate bundled defaults from settings.py; do not start the Python helper to open or edit preferences.
 - Keep Whip Sound on by default for new installs. Play it asynchronously for live accepted retries, once when the app opens, and once when the sound is turned on; never for scans, uncertain sends, reconstructed history, or quitting.
 - Count retry recovery after two minutes of uninterrupted observed activity, or successful completion sooner.

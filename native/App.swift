@@ -592,8 +592,9 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
         // Both windows only show information, so their titles take no ellipsis.
         _ = action("Activity", selector: #selector(showActivity))
         _ = action("Watch Demo", selector: #selector(showDemo))
-        // No row above names the app, so Quit does.
+        // No row above names the app, so About and Quit do.
         menu.addItem(.separator())
+        _ = action("About \(appName)", selector: #selector(showAbout))
         _ = action("Quit \(appName)", selector: #selector(quit), key: "q")
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         statusItem.button?.image = MenuBarIcon.whip(accessibilityDescription: appName)
@@ -763,6 +764,36 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
     @objc private func toggleAutomaticUpdates() {
         appUpdater?.toggleAutomaticUpdates()
         updateMenu()
+    }
+
+    /// The standard About window, with the slogan and links to the website and source.
+    @objc private func showAbout() {
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
+        let body = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
+        let center = NSMutableParagraphStyle()
+        center.alignment = .center
+        center.paragraphSpacing = 6
+        let credits = NSMutableAttributedString()
+        func append(_ text: String, link: String? = nil, bold: Bool = false) {
+            var attributes: [NSAttributedString.Key: Any] = [
+                .font: bold ? NSFont.boldSystemFont(ofSize: NSFont.smallSystemFontSize) : body,
+                .foregroundColor: NSColor.labelColor,
+                .paragraphStyle: center,
+            ]
+            if let link, let url = URL(string: link) { attributes[.link] = url }
+            credits.append(NSAttributedString(string: text, attributes: attributes))
+        }
+        append("Codex stops. Whip doesn’t.\n", bold: true)
+        append("Gets Codex CLI back to work after capacity errors and quota waits.\n")
+        append("codexwhip.com", link: "https://codexwhip.com")
+        append("  ·  ")
+        append("Source on GitHub", link: "https://github.com/turushan/codex-whip")
+        NSApp.activate(ignoringOtherApps: true)
+        NSApp.orderFrontStandardAboutPanel(options: [
+            .applicationVersion: "\(version) · Beta",
+            .version: "",
+            .credits: credits,
+        ])
     }
 
     @MainActor @objc private func showDemo() {
