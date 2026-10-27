@@ -217,8 +217,8 @@ The 24-hour summary counts capacity errors found, retries sent, successful retri
 Quota recovery has its own corresponding counters. A positive permission check counts as permission
 to attempt continuation; success still requires observed healthy work or a completed retry turn.
 History retains 48 hours. The output states when recording began if less than a complete window
-is available. Recent events show a relative time, such as "Today at 6:38 AM", and the last eight
-characters of the session ID. The Activity window reloads whenever it comes to the front.
+is available. Recent events name each session by the last eight characters of its ID. The Activity
+window shows their times as "Today at 6:38 AM" and reloads whenever it comes to the front.
 
 Accepting a continuation counts as a sent retry. Success requires two minutes of observed healthy
 activity on that exact retry turn, or its successful completion sooner. Approval or input waits,
