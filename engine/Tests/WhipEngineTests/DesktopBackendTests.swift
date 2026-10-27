@@ -82,6 +82,9 @@ final class MetadataPeerStub: RPCClient, @unchecked Sendable {
     /// Runs after a successful read, standing in for Python's replaced `metadata.call`.
     var afterRead: (() -> Void)?
     var shouldStop: () -> Bool = { false }
+    var closeCount = 0
+
+    func close() { closeCount += 1 }
 
     func call(_ method: String, _ params: JSON) throws -> JSON {
         calls.append((method, params))

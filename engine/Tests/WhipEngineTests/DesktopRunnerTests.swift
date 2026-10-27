@@ -5,15 +5,14 @@ import Testing
 // Port of tests/test_desktop_runner.py.
 //
 // The Python suite patches time.time, time.monotonic, signal.signal, History, RetrySound,
-// log_emitter, default_state_directory and resolve_socket. DesktopCommand.watch only offers
-// makeBackend/makeMetadata factories, so:
+// log_emitter, default_state_directory and resolve_socket. Here DesktopCommand.Hooks supplies:
+// - env: ServiceEnvironment(home:) under the temporary root, so `defaultStateDirectory`
+//   (the production directory) is a temporary path.
+// - now/monotonic: the fixed clock (1200 by default) and monotonic 100.
+// - makeMetadata/makeBackend: the fake peers; makeHistory/makeSound: recorded instances.
 // - resolve_socket: a placeholder file at codex/app-server-control/app-server-control.sock
 //   satisfies the real resolveSocket.
 // - signal.signal: the SIGINT/SIGTERM dispositions are read with sigaction before and after.
-// - time.time: assertions that depended on the patched clock are made relative to the real
-//   clock and marked NEEDS SEAM where an exact value was asserted.
-// - History, RetrySound, default_state_directory and `metadata.close` have no seam; see the
-//   NEEDS SEAM notes on the affected assertions and tests.
 // The suite is serialized because watch changes process-wide signal dispositions.
 
 private func signalDisposition(_ number: Int32) -> Int {
@@ -27,27 +26,77 @@ private struct FileEntry: Equatable {
     let contents: Data?
 }
 
+/// Wraps the final DesktopRPC to count close() like Python's `mock.Mock(wraps=backend.close)`.
+private final class CountingBackend: RPCClient {
+    let inner: DesktopRPC
+    var closeCount = 0
+    init(_ inner: DesktopRPC) { self.inner = inner }
+    func call(_ method: String, _ params: JSON) throws -> JSON { try inner.call(method, params) }
+    func close() {
+        closeCount += 1
+        inner.close()
+    }
+}
+
+/// A real RetrySound with a recording player. RetrySound is final and keeps its enabled and
+/// closed flags private, so close() is observed by probing: after close, an enabled retry
+/// report never reaches the player.
+private final class RecordedSound {
+    let sound: RetrySound
+    private let lock = NSLock()
+    private var played = 0
+
+    init(file: URL) {
+        var box: RecordedSound?
+        sound = RetrySound(file: file, player: { _ in box?.recordPlay() })
+        box = self
+    }
+
+    private func recordPlay() { lock.withLock { played += 1 } }
+    var plays: Int { lock.withLock { played } }
+
+    var closed: Bool {
+        let before = plays
+        sound.configure(true)
+        sound.report("retry")
+        sound.drain()
+        return plays == before
+    }
+}
+
 /// tests/test_desktop_runner.py `DesktopRunnerTests.setUp`.
 private final class RunnerHarness {
     let root: URL
     let directory: URL
     let home: URL
+    let production: URL
+    let env: ServiceEnvironment
     let peer: DesktopPeerStub
     let metadata = MetadataPeerStub()
-    var backends: [DesktopRPC] = []
+    var backends: [CountingBackend] = []
+    var directBackends: [DesktopRPC] = []
+    var histories: [History] = []
+    var sounds: [RecordedSound] = []
+    var historyError: Error?
     var factoryError: Error?
     var backendError: Error?
+    var clock: Double = 1200
     let originalSignals: [Int]
+    let soundFile: URL
 
     init() throws {
         root = FileManager.default.temporaryDirectory.appendingPathComponent("desktop-runner-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         directory = root.appendingPathComponent("prototype")
         home = root.appendingPathComponent("codex")
+        env = ServiceEnvironment(home: root.appendingPathComponent("user-home"))
+        production = env.defaultStateDirectory
         // Stands in for the patched resolve_socket; the metadata factory never connects to it.
         let control = home.appendingPathComponent("app-server-control")
         try FileManager.default.createDirectory(at: control, withIntermediateDirectories: true)
         FileManager.default.createFile(atPath: control.appendingPathComponent("app-server-control.sock").path, contents: nil)
+        soundFile = root.appendingPathComponent("whip.wav")
+        FileManager.default.createFile(atPath: soundFile.path, contents: Data("synthetic".utf8))
         peer = try DesktopPeerStub()
         originalSignals = [signalDisposition(SIGINT), signalDisposition(SIGTERM)]
     }
@@ -63,21 +112,50 @@ private final class RunnerHarness {
         return metadata
     }
 
+    func desktopRPC(_ socketPath: URL, _ metadata: RPCClient, _ threads: [String],
+                    _ shouldStop: @escaping () -> Bool) throws -> DesktopRPC {
+        if let backendError { throw backendError }
+        return try DesktopRPC(socketPath: socketPath, metadata: metadata, threadIDs: threads,
+                              shouldStop: shouldStop, makeIPC: peer.factory)
+    }
+
+    /// A DesktopRPC used directly (diagnostic and main doctor need the concrete type).
     func backendFactory(_ socketPath: URL, _ metadata: RPCClient, _ threads: [String],
                         _ shouldStop: @escaping () -> Bool) throws -> DesktopRPC {
-        if let backendError { throw backendError }
-        let backend = try DesktopRPC(socketPath: socketPath, metadata: metadata, threadIDs: threads,
-                                     shouldStop: shouldStop, makeIPC: peer.factory)
-        backends.append(backend)
+        let backend = try desktopRPC(socketPath, metadata, threads, shouldStop)
+        directBackends.append(backend)
         return backend
     }
 
-    func watch(directory: URL? = nil, once: Bool = true) throws -> Bool {
+    func hooks() -> DesktopCommand.Hooks {
         var hooks = DesktopCommand.Hooks()
-        hooks.makeBackend = { [unowned self] in try self.backendFactory($0, $1, $2, $3) }
+        hooks.env = env
         hooks.makeMetadata = { [unowned self] in try self.metadataFactory($0, $1) }
-        return try DesktopCommand.watch(directory: directory ?? self.directory, codexHome: home, threadID: "thread",
-                                        once: once, hooks: hooks)
+        hooks.makeBackend = { [unowned self] in
+            let backend = CountingBackend(try self.desktopRPC($0, $1, $2, $3))
+            self.backends.append(backend)
+            return backend
+        }
+        hooks.makeHistory = { [unowned self] directory in
+            if let historyError = self.historyError { throw historyError }
+            let history = try History(directory: directory)
+            self.histories.append(history)
+            return history
+        }
+        hooks.makeSound = { [unowned self] in
+            let sound = RecordedSound(file: self.soundFile)
+            self.sounds.append(sound)
+            return sound.sound
+        }
+        hooks.now = { [unowned self] in self.clock }
+        hooks.monotonic = { 100 }
+        hooks.sleep = { _ in }
+        return hooks
+    }
+
+    func watch(directory: URL? = nil, once: Bool = true, hooks given: DesktopCommand.Hooks? = nil) throws -> Bool {
+        try DesktopCommand.watch(directory: directory ?? self.directory, codexHome: home, threadID: "thread",
+                                 once: once, hooks: given ?? hooks())
     }
 
     @discardableResult
@@ -99,12 +177,13 @@ private final class RunnerHarness {
     var signalsRestored: Bool { [signalDisposition(SIGINT), signalDisposition(SIGTERM)] == originalSignals }
 
     /// tests/test_desktop_runner.py `assert_resources_closed`.
-    /// NEEDS SEAM: History and RetrySound are constructed inside DesktopCommand.watch, so their
-    /// close() calls cannot be observed; inject `makeHistory` and `makeSound` factories.
-    /// DesktopRPC is final, so `backend.close.assert_called_once()` is approximated by its
-    /// cleared anchors.
-    func resourcesClosed() -> Bool {
-        signalsRestored && backends.allSatisfy { $0.anchors.isEmpty } && peer.cleanConnections()
+    /// History is final and keeps its connection private, so `history.closed` cannot be read;
+    /// it is the one resource this helper does not check.
+    func resourcesClosed(sourceLocation: SourceLocation = #_sourceLocation) {
+        #expect(signalsRestored, "signal handlers restored", sourceLocation: sourceLocation)
+        #expect(sounds.allSatisfy { $0.closed }, "sounds closed", sourceLocation: sourceLocation)
+        #expect(backends.allSatisfy { $0.closeCount == 1 }, "backend closed once", sourceLocation: sourceLocation)
+        #expect(peer.cleanConnections(), "connections closed and unfollowed", sourceLocation: sourceLocation)
     }
 
     static func snapshot(_ directory: URL) -> [String: FileEntry]? {
@@ -153,7 +232,7 @@ private final class RunnerHarness {
         #expect(!output.contains("private"))
         #expect(!output.contains("failed-turn"))
         #expect(!output.contains("owner"))
-        #expect(h.resourcesClosed())
+        h.resourcesClosed()
     }
 
     // test_doctor_distinguishes_unverified_persisted_time_without_deriving_it
@@ -178,42 +257,45 @@ private final class RunnerHarness {
     // test_new_once_watcher_is_private_silent_and_uses_a_separate_journal
     @Test func newOnceWatcherIsPrivateSilentAndUsesASeparateJournal() throws {
         let h = try RunnerHarness()
-        let before = Date().timeIntervalSince1970
         #expect(try h.watch())
-        let after = Date().timeIntervalSince1970
         let state = try h.state()
         #expect(state["control_backend"] == "desktop-ipc")
         #expect(state["threads"] == ["thread"])
-        // NEEDS SEAM: time.time. Python asserts enabled_at == 1200 from a patched clock; watch
-        // reads Date() directly, so this checks the real activation time instead.
-        let enabled = try #require(state["enabled_at"]?.number)
-        #expect(enabled >= before.rounded(.down) && enabled <= after.rounded(.up))
+        #expect(state["enabled_at"]?.number == 1200)
         #expect(state["pending"] == [:])
         var expected = Settings.defaults
         expected.soundEnabled = false
         #expect(try Settings.read(directory: h.directory) == expected)
-        // NEEDS SEAM: RetrySound. Python asserts audio.configurations == [False]; inject a sound
-        // factory into DesktopCommand.watch to observe configure().
+        // RetrySound keeps its configuration private. Python asserts configurations == [False];
+        // the sound is checked to be silent: no retry was played.
+        #expect(h.sounds.count == 1)
+        #expect(h.sounds.allSatisfy { $0.plays == 0 })
         #expect(h.peer.starts.isEmpty)
-        // NEEDS SEAM: default_state_directory. Python asserts the patched production directory
-        // stays absent; Paths.defaultStateDirectory is the real ~/Library path and is not checked.
+        #expect(!FileManager.default.fileExists(atPath: h.production.path))
         #expect(RunnerHarness.mode(h.directory) == 0o700)
         for name in ["state.json", "settings.json", "worker.log"] {
             #expect(RunnerHarness.mode(h.directory.appendingPathComponent(name)) == 0o600, "\(name)")
         }
-        // NEEDS SEAM: metadata.close. Python asserts metadata.close() was called once; watch only
-        // closes `metadata as? WebSocketRPC` (DesktopCommand.swift closeConnections), and RPCClient
-        // has no close(), so a factory-made metadata client is never closed.
-        #expect(h.resourcesClosed())
+        #expect(h.metadata.closeCount == 1)
+        h.resourcesClosed()
     }
 
     // test_production_directory_and_alias_are_rejected_without_file_changes
-    // NEEDS SEAM: core.default_state_directory. DesktopCommand.watch compares against
-    // Paths.defaultStateDirectory (~/Library/Application Support/Codex Whip), which tests must
-    // not touch. Inject the production directory (for example a `productionDirectory: URL`
-    // parameter) to port this test.
-    @Test(.disabled("NEEDS SEAM: Paths.defaultStateDirectory cannot be redirected to a temporary directory"))
-    func productionDirectoryAndAliasAreRejectedWithoutFileChanges() {}
+    @Test func productionDirectoryAndAliasAreRejectedWithoutFileChanges() throws {
+        let h = try RunnerHarness()
+        try FileManager.default.createDirectory(at: h.production, withIntermediateDirectories: true)
+        try Data("production settings stay untouched".utf8).write(to: h.production.appendingPathComponent("settings.json"))
+        let before = RunnerHarness.snapshot(h.production)
+        let alias = h.root.appendingPathComponent("production-alias")
+        try FileManager.default.createSymbolicLink(at: alias, withDestinationURL: h.production)
+        for directory in [h.production, alias] {
+            #expect(throws: WhipError.self, "\(directory.lastPathComponent)") { _ = try h.watch(directory: directory) }
+            #expect(RunnerHarness.snapshot(h.production) == before)
+        }
+        #expect(h.metadata.calls.isEmpty)
+        // Python asserts signal.signal was never called; the dispositions are compared instead.
+        #expect(h.signalsRestored)
+    }
 
     // test_unmarked_custom_and_other_scope_journals_are_rejected_without_changes
     @Test func unmarkedCustomAndOtherScopeJournalsAreRejectedWithoutChanges() throws {
@@ -234,7 +316,6 @@ private final class RunnerHarness {
             #expect(RunnerHarness.snapshot(directory) == before, "case \(index)")
         }
         #expect(h.metadata.calls.isEmpty)
-        // Python asserts signal.signal was never called; the dispositions are compared instead.
         #expect(h.signalsRestored)
     }
 
@@ -270,18 +351,18 @@ private final class RunnerHarness {
         let h = try RunnerHarness()
         try h.markJournal(["handled": ["earlier": ["turn_id": "old", "outcome": "cancelled"]],
                            "paused": ["other-paused": true]])
-        // Python runs at clock 1100 and then 1200. With the real clock the second run follows
-        // within seconds, still well before the 180 second retry is due.
+        h.clock = 1100
         #expect(try h.watch())
         let before = try h.state()
         #expect(before[backendPath: ["pending", "thread"]] != nil)
+        h.clock = 1200
         #expect(try h.watch())
         let after = try h.state()
         for name in ["enabled_at", "threads", "pending", "handled", "paused", "control_backend"] {
             #expect(after[name] == before[name], "\(name)")
         }
         #expect(h.peer.starts.isEmpty)
-        #expect(h.resourcesClosed())
+        h.resourcesClosed()
     }
 
     // test_legacy_settings_keep_custom_intervals_message_and_sound_off
@@ -293,25 +374,21 @@ private final class RunnerHarness {
         let path = h.directory.appendingPathComponent("settings.json")
         let document = Data(try custom.serialized(JSON.Format(sortKeys: false)).utf8)
         try document.write(to: path)
+        h.clock = 1100
         #expect(try h.watch())
         #expect(try Data(contentsOf: path) == document)
         #expect(try Settings.read(directory: h.directory)
                 == Settings(retrySeconds: 777, scanSeconds: 123, message: message, soundEnabled: false))
-        // NEEDS SEAM: time.time. Python asserts due_at == 1877 (clock 1100 + 777) and then runs
-        // at clock 1877. Here the wait is checked relative to its real start, and the elapsed
-        // 777 seconds are simulated by moving the saved wait back in the journal.
-        let statePath = h.directory.appendingPathComponent("state.json")
-        var state = try h.state()
-        let started = try #require(state[backendPath: ["pending", "thread", "wait_started_at"]]?.number)
-        #expect(state[backendPath: ["pending", "thread", "due_at"]]?.number == started + 777)
-        state[backendPath: ["pending", "thread", "wait_started_at"]] = .double(started - 777)
-        state[backendPath: ["pending", "thread", "due_at"]] = .double(started)
-        try FileStore.writeJSON(state, to: statePath)
+        #expect(try h.state()[backendPath: ["pending", "thread", "due_at"]]?.number == 1877)
+        h.clock = 1877
         #expect(try h.watch())
         let start = try #require(h.peer.starts.first)
         #expect(start.params[backendPath: ["turnStart", "request", "input"]]?.array?.first?["text"] == .string(message))
-        // NEEDS SEAM: RetrySound. Python asserts every audio.configurations == [False].
-        #expect(h.resourcesClosed())
+        // Python asserts every audio.configurations == [False]; with the live retry above, a
+        // silent player shows each sound stayed off.
+        #expect(h.sounds.count == 2)
+        #expect(h.sounds.allSatisfy { $0.plays == 0 })
+        h.resourcesClosed()
     }
 
     // test_connection_or_owner_protocol_failure_holds_and_returns_false
@@ -329,7 +406,7 @@ private final class RunnerHarness {
             #expect(lastError.contains("on hold"), "\(kind)")
             #expect(!lastError.contains("private"), "\(kind)")
             #expect(h.peer.starts.isEmpty, "\(kind)")
-            #expect(h.resourcesClosed(), "\(kind)")
+            h.resourcesClosed()
         }
     }
 
@@ -341,7 +418,7 @@ private final class RunnerHarness {
         #expect(try h.watch() == false)
         #expect(h.peer.starts.isEmpty)
         #expect(try h.state()["pending"] == [:])
-        #expect(h.resourcesClosed())
+        h.resourcesClosed()
     }
 
     // test_invalid_saved_settings_restore_handlers_and_close_resources
@@ -351,26 +428,55 @@ private final class RunnerHarness {
         try Data(#"{"invalid":true}"#.utf8).write(to: h.directory.appendingPathComponent("settings.json"))
         #expect(throws: SettingsError.self) { _ = try h.watch() }
         #expect(h.peer.connections.isEmpty)
-        #expect(h.resourcesClosed())
+        h.resourcesClosed()
     }
 
     // test_resource_initialization_failure_restores_signals_and_closes_earlier_resources
-    // NEEDS SEAM: core.History and runner.RetrySound. DesktopCommand.watch constructs
-    // `History(directory:)` and `RetrySound()` directly; inject `makeHistory: (URL) throws -> History`
-    // and `makeSound: () throws -> RetrySound` factories to make each one fail.
-    @Test(.disabled("NEEDS SEAM: History and RetrySound construction cannot be made to fail"))
-    func resourceInitializationFailureRestoresSignalsAndClosesEarlierResources() {}
+    // Only the History case ports. Hooks.makeSound is `() -> RetrySound` and RetrySound's
+    // initializer cannot throw, so Python's RetrySound RuntimeError case has no Swift
+    // counterpart.
+    @Test func resourceInitializationFailureRestoresSignalsAndClosesEarlierResources() throws {
+        let h = try RunnerHarness()
+        h.historyError = BackendTestError("Resource unavailable")
+        #expect(throws: BackendTestError.self) { _ = try h.watch() }
+        #expect(h.sounds.isEmpty)
+        h.resourcesClosed()
+    }
 
     // test_signal_stop_exits_foreground_loop_and_closes_connections
-    // NEEDS SEAM: runner.time.sleep and signal.signal. A non-once watch loops on usleep and stops
-    // only on a real SIGINT/SIGTERM; delivering one to the shared test process is unsafe. Inject a
-    // `sleep: (Double) -> Void` hook (or the StopFlag) into DesktopCommand.watch.
-    @Test(.disabled("NEEDS SEAM: the foreground loop can only be stopped by a real process signal"))
-    func signalStopExitsForegroundLoopAndClosesConnections() {}
+    // Python's patched sleep invokes the installed SIGTERM handler. Delivering a real signal to
+    // the shared test process is unsafe, so sleep sets the stop condition that the signal
+    // flag feeds, and signal handling is turned off.
+    @Test func signalStopExitsForegroundLoopAndClosesConnections() throws {
+        let h = try RunnerHarness()
+        var stopped = false
+        var hooks = h.hooks()
+        hooks.handleSignals = false
+        hooks.stopRequested = { stopped }
+        hooks.sleep = { _ in stopped = true }
+        #expect(try h.watch(once: false, hooks: hooks))
+        #expect(h.metadata.shouldStop())
+        h.resourcesClosed()
+    }
 
     // test_main_doctor_is_read_only_and_closes_backend_and_metadata
-    // NEEDS SEAM: core.WebSocketRPC and runner.DesktopRPC. DesktopCommand.main builds both
-    // directly; add `makeMetadata`/`makeBackend` parameters to main (as watch has) to port this.
-    @Test(.disabled("NEEDS SEAM: DesktopCommand.main has no metadata or backend factory"))
-    func mainDoctorIsReadOnlyAndClosesBackendAndMetadata() {}
+    @Test func mainDoctorIsReadOnlyAndClosesBackendAndMetadata() throws {
+        let h = try RunnerHarness()
+        var hooks = h.hooks()
+        // The doctor needs the concrete DesktopRPC, so this backend is not wrapped and its close
+        // is observed through cleared anchors and closed connections.
+        hooks.makeBackend = { [unowned h] in try h.backendFactory($0, $1, $2, $3) }
+        var output = ""
+        var errors = ""
+        let status = DesktopCommand.main(["--thread", "thread", "doctor"], codexHome: h.home, hooks: hooks,
+                                         stdout: { output += $0 }, stderr: { errors += $0 })
+        #expect(status == 0, "\(errors)")
+        let result = try JSON.parse(output)
+        #expect(result["message_sent"] == false)
+        #expect(h.peer.starts.isEmpty)
+        #expect(h.metadata.closeCount == 1)
+        #expect(h.directBackends.count == 1)
+        #expect(h.directBackends.allSatisfy { $0.anchors.isEmpty })
+        h.resourcesClosed()
+    }
 }
