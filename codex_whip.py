@@ -31,8 +31,8 @@ from settings import (DEFAULT_MESSAGE, DEFAULT_SETTINGS, ScanScheduler, Settings
 from whip_sound import RetrySound
 
 
-VERSION = "1.9.1"
-LABEL = "com.aktay.codex-keep-going"
+VERSION = "1.9.0"
+LABEL = "com.turushan.codex-whip"
 INTERVAL = DEFAULT_SETTINGS["retry_seconds"]
 SCAN_INTERVAL = DEFAULT_SETTINGS["scan_seconds"]
 SUCCESS_SECONDS = 120
@@ -919,10 +919,6 @@ def default_state_directory():
     return Path.home() / "Library/Application Support/Codex Whip"
 
 
-def legacy_state_directory():
-    return Path.home() / "Library/Application Support/Codex Keep Going"
-
-
 def initial_state(threads=()):
     return {
         "version": 1, "enabled_at": time.time(), "threads": list(threads),
@@ -945,8 +941,8 @@ def worker_running(directory):
         return False
 
 
-def legacy_job_paths(path):
-    """Read effective paths without changing a legacy launch job."""
+def cli_job_paths(path):
+    """Read the CLI launch job's effective paths without changing it."""
     try:
         job = plistlib.loads(path.read_bytes())
         arguments = job["ProgramArguments"]
@@ -978,7 +974,7 @@ def legacy_job_paths(path):
             return resolved.resolve()
 
         return (
-            argument("--state-dir", str(legacy_state_directory())),
+            argument("--state-dir", str(default_state_directory())),
             argument("--codex-home", environment.get("CODEX_HOME", str(Path.home() / ".codex"))),
         )
     except Exception as error:
@@ -992,34 +988,6 @@ def current_command_target():
     return Path(sys.executable if getattr(sys, "frozen", False) else __file__).resolve()
 
 
-def managed_legacy_command(script):
-    command = Path.home() / ".local/bin/codex-keep-going"
-    if not command.is_symlink():
-        return None
-    target = command.resolve()
-    if target == script:
-        return target
-    if (target.name == "codex_keep_going.py" and target.parent == script.parent
-            and script.name == "codex_whip.py"):
-        return target
-    try:
-        if target.suffix == ".py" and target.is_file():
-            source = target.read_text()
-            if 'LABEL = "com.aktay.codex-keep-going"' in source and "def run_worker(" in source:
-                return target
-        if target.name == "keep-going-helper" and target.parent.name == "Helpers":
-            replacement = target.with_name("whip-helper")
-            replaced_in_place = (not target.exists() and replacement.is_file()
-                                 and replacement.resolve() == script)
-            if target.is_file() or replaced_in_place:
-                info = plistlib.loads((target.parent.parent / "Info.plist").read_bytes())
-                if info.get("CFBundleIdentifier") == "com.aktay.codex-keep-going.app":
-                    return target
-    except (OSError, ValueError, UnicodeError):
-        pass
-    return None
-
-
 def check_command_target(script):
     command = Path.home() / ".local/bin/codex-whip"
     if (command.exists() or command.is_symlink()) and not (command.is_symlink() and command.resolve() == script):
@@ -1027,94 +995,35 @@ def check_command_target(script):
     return command
 
 
-def check_legacy_command_target(expected_target):
-    old = Path.home() / ".local/bin/codex-keep-going"
-    if not old.is_symlink() or old.resolve() != expected_target:
-        raise RuntimeError("The old CLI command changed during migration; it was left intact.")
-    return old
-
-
-def migrate_legacy_command(script, expected_target):
-    old = check_legacy_command_target(expected_target)
-    command = check_command_target(script)
-    if not command.is_symlink():
-        command.symlink_to(script)
-    old.unlink()
-
-
 def prepare_state(directory, codex_home=None):
-    """Prepare the native worker and safely migrate the previous default installation."""
+    """Prepare the native worker's state, taking over from a CLI job that uses the same directory."""
     directory = Path(directory).expanduser().resolve()
-    migrated = False
     if sys.platform == "darwin" and directory == default_state_directory().resolve():
-        old_directory = legacy_state_directory().resolve()
-        if legacy_state_directory().is_symlink():
-            raise RuntimeError("The old state directory is a symlink. Migrate that installation explicitly; "
-                               "its files were left intact.")
-        if old_directory.exists() and directory.exists():
-            raise RuntimeError("Both Codex Keep Going and Codex Whip state directories exist. "
-                               "Resolve that conflict before migrating; neither directory was changed.")
-        if old_directory.exists():
-            old_state = old_directory / "state.json"
-            if old_state.exists() and read_json(old_state).get("version") != 1:
-                raise RuntimeError("Unsupported retry-state version in the old installation; nothing was changed.")
-            read_settings(old_directory)
-        elif directory.exists():
+        if directory.exists():
             read_settings(directory)
         job_path = agent_path()
-        running = service_running()
-        old_job_directory = None
         if job_path.exists():
-            old_job_directory, old_codex_home = legacy_job_paths(job_path)
+            job_directory, job_codex_home = cli_job_paths(job_path)
             target_codex_home = Path(codex_home if codex_home is not None else os.environ.get(
                 "CODEX_HOME", str(Path.home() / ".codex")
             )).expanduser().resolve()
-            if old_job_directory not in (directory, old_directory) or old_codex_home != target_codex_home:
+            if job_directory != directory or job_codex_home != target_codex_home:
                 raise RuntimeError(
                     "The existing CLI job uses a different state directory or Codex home. Keep that "
                     "service, or stop it explicitly before setting up the app separately. "
                     "Its launch file and saved state were left intact."
                 )
-        elif running:
+            stop_service()
+            deadline = time.monotonic() + 15
+            while worker_running(directory):
+                if time.monotonic() >= deadline:
+                    raise RuntimeError("The previous CLI worker is still stopping. Try again shortly.")
+                time.sleep(0.1)
+        elif service_running():
             raise RuntimeError(
                 "A CLI job is running, but its launch file is unavailable, so its configuration is "
                 "unknown. Keep that service, or stop it explicitly before setting up the app."
             )
-        script = current_command_target()
-        old_command_target = managed_legacy_command(script)
-        if old_command_target is not None:
-            check_command_target(script)
-        if worker_running(old_directory) and not (running and old_job_directory == old_directory):
-            raise RuntimeError("Quit Codex Keep Going before migrating its state. Its worker is still running.")
-        if job_path.exists():
-            stop_service()
-            deadline = time.monotonic() + 15
-            while worker_running(directory) or worker_running(old_directory):
-                if time.monotonic() >= deadline:
-                    raise RuntimeError("The previous CLI worker is still stopping. Try again shortly.")
-                time.sleep(0.1)
-        if old_command_target is not None:
-            check_legacy_command_target(old_command_target)
-            check_command_target(script)
-        if old_directory.exists():
-            lock = None
-            try:
-                try:
-                    lock = (old_directory / "worker.lock").open("r")
-                except FileNotFoundError:
-                    pass
-                if lock is not None:
-                    fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                old_directory.rename(directory)
-                migrated = True
-            except BlockingIOError as error:
-                raise RuntimeError("The old worker started during migration. Quit it and try again.") from error
-            finally:
-                if lock is not None:
-                    lock.close()
-        if old_command_target is not None:
-            migrate_legacy_command(script, old_command_target)
-            migrated = True
     directory.mkdir(parents=True, exist_ok=True, mode=0o700)
     state_path = directory / "state.json"
     if state_path.exists():
@@ -1122,7 +1031,6 @@ def prepare_state(directory, codex_home=None):
             raise RuntimeError("Unsupported retry-state version")
     else:
         atomic_json(state_path, initial_state())
-    return migrated
 
 
 def dashboard(directory):
@@ -1160,17 +1068,15 @@ def start_service(args, directory, codex_home):
         print("Already enabled. Use codex-whip status; native app workers are managed from the app menu.")
         return
     script = current_command_target()
-    needs_migration = (directory.resolve() == default_state_directory().resolve()
-                       and (legacy_state_directory().exists() or managed_legacy_command(script) is not None))
-    if service_running() and not needs_migration:
+    if service_running():
         print("Already enabled. Use codex-whip status or stop.")
         return
-    command = check_command_target(script)
-    migrated = prepare_state(directory, codex_home)
+    check_command_target(script)
+    prepare_state(directory, codex_home)
     frozen = bool(getattr(sys, "frozen", False))
     interpreter = sys.executable
     state_path = directory / "state.json"
-    if (getattr(args, "preserve_state", False) or migrated) and state_path.exists():
+    if getattr(args, "preserve_state", False) and state_path.exists():
         state = read_json(state_path)
         if state.get("version") != 1:
             raise RuntimeError("Unsupported retry-state version")
@@ -1383,8 +1289,6 @@ def main(argv=None):
         elif args.command == "settings":
             print(json.dumps(settings_envelope(args.state_dir)))
         elif args.command == "configure":
-            if (args.state_dir == default_state_directory().resolve() and legacy_state_directory().exists()):
-                raise SettingsError("Run prepare before configuring Codex Whip so existing files can migrate safely.")
             payload = sys.stdin.read(65537)
             if len(payload) > 65536:
                 raise SettingsError("Settings JSON exceeds the allowed size.")
