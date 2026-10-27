@@ -147,7 +147,7 @@ final class PreferencesStore {
         try verifyDirectory(descriptor)
         let latest = try readSnapshot(in: descriptor)
         guard Self.matches(previous, latest) else {
-            throw PreferencesError("Preferences changed while saving. Open Preferences and try your change again.")
+            throw PreferencesError("Preferences changed while saving. Try your change again.")
         }
         let result: Int32
         if previous == nil {

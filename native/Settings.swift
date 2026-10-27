@@ -10,7 +10,17 @@ final class PreferencesMenuController: NSObject, NSMenuDelegate {
         }
     }
     var onChange: (() -> Void)?
-    private(set) var errorText: String?
+
+    /// A preferences problem for the main menu: a short row title, with details for its tooltip.
+    /// A failed read shows first; a failed write stays until a later save succeeds.
+    var problem: (title: String, detail: String)? {
+        if let readError { return ("Couldn’t read preferences", readError) }
+        if let writeError { return ("Couldn’t save preferences", writeError) }
+        return nil
+    }
+
+    /// The watcher reads the same settings.json, so a failed read also holds its checks.
+    var readFailed: Bool { readError != nil }
 
     var items: [NSMenuItem] { [retryItem, scanItem, messageItem] }
 
@@ -24,6 +34,7 @@ final class PreferencesMenuController: NSObject, NSMenuDelegate {
     private let retryChoices = [60, 120, 180, 300, 600, 900, 1800, 3600]
     private let scanChoices = [15, 30, 60, 120, 300, 600]
     private var editor: RetryMessageEditor?
+    private var readError: String?
     private var writeError: String?
 
     init(store: PreferencesStore) {
@@ -47,10 +58,10 @@ final class PreferencesMenuController: NSObject, NSMenuDelegate {
     func refresh() {
         do {
             apply(try store.read())
-            errorText = writeError
+            readError = nil
         } catch {
             for item in items { item.isEnabled = false }
-            errorText = "Couldn’t read preferences. \(error.localizedDescription)"
+            readError = error.localizedDescription
         }
     }
 
@@ -65,7 +76,7 @@ final class PreferencesMenuController: NSObject, NSMenuDelegate {
         do {
             let saved = try store.read()
             apply(saved)
-            errorText = writeError
+            readError = nil
             if editor == nil {
                 let editor = RetryMessageEditor(defaultMessage: store.defaults.message)
                 editor.onSave = { [weak self] message in
@@ -80,7 +91,7 @@ final class PreferencesMenuController: NSObject, NSMenuDelegate {
             editor?.present(message: saved.message)
         } catch {
             for item in items { item.isEnabled = false }
-            errorText = "Couldn’t read preferences. \(error.localizedDescription)"
+            readError = error.localizedDescription
             onChange?()
         }
     }
@@ -183,13 +194,13 @@ final class PreferencesMenuController: NSObject, NSMenuDelegate {
     private func update(_ mutate: (inout RetrySettings) -> Void) throws {
         do {
             let saved = try store.update(mutate)
+            readError = nil
             writeError = nil
-            errorText = nil
             apply(saved)
             onChange?()
         } catch {
             // A refresh can recover a read failure, but must not hide a failed write.
-            writeError = "Couldn’t save preferences. \(error.localizedDescription)"
+            writeError = error.localizedDescription
             refresh()
             onChange?()
             throw error

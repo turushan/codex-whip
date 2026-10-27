@@ -8,6 +8,8 @@ import ServiceManagement
 
 private let appName = "Codex Whip"
 private let advisoryLock: (Int32, Int32) -> Int32 = flock
+// The opening words of the watcher's error when Codex is not running (resolve_socket in codex_whip.py).
+private let missingCodexMessage = "Codex daemon socket is unavailable"
 
 func isIsolatedQABundle() -> Bool {
     Bundle.main.bundleIdentifier?.split(separator: ".").contains("qa") == true
@@ -135,7 +137,7 @@ private final class HelperClient {
             if FileManager.default.fileExists(atPath: stateURL.path) {
                 let value = try JSONSerialization.jsonObject(with: Data(contentsOf: stateURL))
                 guard let object = value as? [String: Any] else {
-                    return CommandResult(status: -1, output: Data(), error: "The local watcher state is invalid.")
+                    return CommandResult(status: -1, output: Data(), error: "Codex Whip’s saved state is invalid.")
                 }
                 state = object
             }
@@ -206,17 +208,33 @@ private final class HelperClient {
             }
         }
         _ = readers.wait(timeout: .now() + 1)
+        // The command-line tool names itself before each error for Terminal.
+        // The app shows the message alone.
         let error = String(decoding: errors.value(), as: UTF8.self)
             .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "codex-whip: ", with: "", options: .anchored)
         return CommandResult(status: timedOut ? -1 : process.terminationStatus,
                              output: output.value(),
-                             error: timedOut ? "The helper did not respond in time." : error)
+                             error: timedOut ? "Codex Whip took too long to respond." : error)
     }
 }
 
 private final class WorkerSupervisor {
+    /// A stop the user did not ask for: a short status title, and a plain explanation.
+    struct Failure {
+        let title: String
+        let detail: String
+
+        // Each failure leaves the menu on Resume, which tries again.
+        init(title: String, reason: String) {
+            self.title = title
+            let sentence = reason.last.map { ".!?".contains($0) } == true ? reason : reason + "."
+            detail = sentence + " Choose Resume to try again."
+        }
+    }
+
     enum Phase {
-        case starting, running, paused, failed(String)
+        case starting, running, paused, failed(Failure)
     }
 
     private struct Worker {
@@ -264,7 +282,8 @@ private final class WorkerSupervisor {
         let result = helper.run("prepare", timeout: 30)
         guard result.status == 0 else {
             shouldRun = false
-            publish(.failed(result.error.isEmpty ? "The helper could not be prepared." : result.error))
+            publish(.failed(Failure(title: "Couldn’t start",
+                                    reason: result.error.isEmpty ? "Codex Whip couldn’t prepare its saved state." : result.error)))
             return false
         }
         prepared = true
@@ -302,7 +321,8 @@ private final class WorkerSupervisor {
                 self.worker = nil
                 if self.shouldRun && self.isRunRequested {
                     self.shouldRun = false
-                    self.publish(.failed("The helper stopped unexpectedly (exit \(process.terminationStatus)). Resume to try again."))
+                    let reason = "Codex Whip stopped watching unexpectedly (exit code \(process.terminationStatus))."
+                    self.publish(.failed(Failure(title: "Stopped unexpectedly", reason: reason)))
                 }
             }
         }
@@ -312,7 +332,7 @@ private final class WorkerSupervisor {
             publish(.running)
         } catch {
             shouldRun = false
-            publish(.failed(error.localizedDescription))
+            publish(.failed(Failure(title: "Couldn’t start", reason: error.localizedDescription)))
         }
     }
 
@@ -355,11 +375,10 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
     private let statusRow = NSMenuItem(title: "Starting…", action: nil, keyEquivalent: "")
     private let nextRetryRow = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let quotaRow = NSMenuItem(title: "", action: nil, keyEquivalent: "")
-    private let errorRow = NSMenuItem(title: "The helper needs attention", action: nil, keyEquivalent: "")
+    private let errorRow = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private var pauseItem: NSMenuItem!
     private var loginItem: NSMenuItem!
     private var preferencesMenu: PreferencesMenuController?
-    private var preferenceSetupError: String?
     private var showMessageWhenReady = false
     private var demoController: DemoController?
     private var helperReady = false
@@ -422,7 +441,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
             self.phase = phase
             self.workerPID = pid
             self.helperReady = ready
-            if case .failed(let error) = phase { self.helperError = error }
+            if case .failed(let failure) = phase { self.helperError = failure.detail }
             else { self.helperError = nil }
             self.updateMenu()
             if ready && self.showMessageWhenReady {
@@ -556,7 +575,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
             preferencesMenu = preferences
             for item in preferences.items { menu.addItem(item) }
         } catch {
-            preferenceSetupError = error.localizedDescription
+            // Without bundled defaults or a usable state directory, no value is known.
             let unavailable = NSMenuItem(title: "Preferences unavailable", action: nil, keyEquivalent: "")
             unavailable.isEnabled = false
             unavailable.toolTip = error.localizedDescription
@@ -593,13 +612,12 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
     }
 
     private func updateMenu() {
-        let failed: Bool
-        if case .failed = phase { failed = true } else { failed = false }
-        pauseItem.title = paused || failed ? "Resume" : "Pause"
+        let failure: WorkerSupervisor.Failure?
+        if case .failed(let value) = phase { failure = value } else { failure = nil }
+        pauseItem.title = paused || failure != nil ? "Resume" : "Pause"
         pauseItem.isEnabled = !installingUpdate
         preferencesMenu?.isReady = helperReady && !installingUpdate
         preferencesMenu?.refresh()
-        let preferenceError = preferenceSetupError ?? preferencesMenu?.errorText
         checkForUpdatesItem.isEnabled = appUpdater?.canCheckForUpdates == true && !installingUpdate
         let availableVersion = appUpdater?.availableUpdateVersion
         let version = availableVersion.flatMap { $0.isEmpty ? nil : $0 }
@@ -611,41 +629,61 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
             : "\(version.map { "Version \($0)" } ?? "A new version") is available. Review the update and choose when to install."
         automaticUpdatesItem.isEnabled = appUpdater?.isEnabled == true && !installingUpdate
         automaticUpdatesItem.state = appUpdater?.automaticUpdatesEnabled == true ? .on : .off
-        errorRow.isHidden = helperError == nil && dashboardError == nil && preferenceError == nil
-        errorRow.title = preferenceError == nil ? "The helper needs attention" : "Preferences need attention"
-        errorRow.toolTip = preferenceError ?? helperError ?? dashboardError
-        if paused || failed || installingUpdate {
+        // Helper failures appear in the status row itself; this row explains preferences problems.
+        let problem = preferencesMenu?.problem
+        errorRow.isHidden = problem == nil
+        errorRow.title = problem?.title ?? ""
+        errorRow.toolTip = problem?.detail
+        // The status row says what the watcher is doing now. Countdowns appear only
+        // while it watches, so a wait never looks active beside an error.
+        var statusDetail: String?
+        var watching = false
+        if installingUpdate {
+            statusRow.title = "Installing update…"
+        } else if let failure {
+            statusRow.title = failure.title
+            statusDetail = failure.detail
+        } else if paused {
             statusRow.title = "Paused"
-        } else if case .running = phase, dashboard?.running == true {
-            if let error = dashboard?.state?.lastError, !error.isEmpty {
-                statusRow.title = preferenceError == nil ? "Waiting for Codex" : "Waiting for preferences"
+        } else if case .running = phase {
+            if let dashboardError {
+                statusRow.title = "Status unavailable"
+                statusDetail = dashboardError
+            } else if dashboard?.running != true {
+                statusRow.title = "Starting…"
+            } else if let error = watcherError {
+                // The watcher reads the same settings.json, so a failed read stops its checks too.
+                statusRow.title = preferencesMenu?.readFailed == true ? "Waiting for valid preferences" : "Waiting for Codex"
+                statusDetail = error
             } else if let sessions = dashboard?.state?.sessions, dashboard?.state?.lastScanAt != nil {
                 let count = sessions.total ?? 0
                 statusRow.title = "Watching \(count) \(count == 1 ? "session" : "sessions")"
+                watching = true
             } else {
                 statusRow.title = "Starting…"
             }
         } else {
             statusRow.title = "Starting…"
         }
+        statusRow.toolTip = statusDetail
         statusItem.button?.toolTip = "\(appName): \(statusRow.title)"
-        let pending = Array((dashboard?.state?.pending ?? [:]).values)
-        let showPending = !paused && !failed && !installingUpdate
+        let pending = watching ? Array((dashboard?.state?.pending ?? [:]).values) : []
         let due = pending.filter { $0.kind == nil || $0.kind == "capacity" }
             .compactMap(\.dueAt).filter(\.isFinite).min()
-        nextRetryRow.isHidden = !showPending || due == nil
+        nextRetryRow.isHidden = due == nil
         if let due {
             nextRetryRow.title = "Next retry \(countdown(to: due))"
         }
         let quota = pending.filter { $0.kind == "quota" }
-        quotaRow.isHidden = !showPending || quota.isEmpty
+        quotaRow.isHidden = quota.isEmpty
         let quotaDue = quota.compactMap(\.dueAt).filter(\.isFinite).min()
-        if quota.contains(where: { $0.quotaStatus == "account_changed" }) {
-            quotaRow.title = "Quota recovery paused · account changed"
+        let held = quota.filter { $0.quotaStatus == "account_changed" }.count
+        if held > 0 {
+            quotaRow.title = "\(held == 1 ? "Quota retry" : "Quota retries") on hold · account changed"
             quotaRow.toolTip = "A pending quota retry belongs to another Codex account. It stays on hold until the original account is active. Other sessions continue to be watched."
         } else if quota.contains(where: { $0.quotaStatus == "unknown" }) {
-            quotaRow.title = quotaDue.map { "Quota unavailable · check \(countdown(to: $0))" }
-                ?? "Quota unavailable · checking again"
+            quotaRow.title = quotaDue.map { "Quota status unknown · check \(countdown(to: $0))" }
+                ?? "Quota status unknown · checking again"
             quotaRow.toolTip = "Codex Whip could not confirm the available quota. It will keep checking and hold the retry until quota is available."
         } else {
             quotaRow.title = quotaDue.map { "Waiting for quota · check \(countdown(to: $0))" }
@@ -654,6 +692,16 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
         }
         updateLoginItem()
         updateActivity()
+    }
+
+    /// The watcher's last error, in the app's words. Terminal output keeps the full
+    /// message, including the socket path, for troubleshooting.
+    private var watcherError: String? {
+        guard let error = dashboard?.state?.lastError, !error.isEmpty else { return nil }
+        if error.hasPrefix(missingCodexMessage) {
+            return "Codex isn’t open. Open Codex CLI, and Codex Whip connects at its next check."
+        }
+        return error
     }
 
     private func countdown(to due: TimeInterval) -> String {
@@ -738,7 +786,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
                     self.dashboardQueryAt = queryAt
                     self.dashboardError = nil
                 } else {
-                    self.dashboardError = result.error.isEmpty ? "Could not read local activity." : result.error
+                    self.dashboardError = result.error.isEmpty ? "Codex Whip couldn’t read its saved state." : result.error
                 }
                 self.updateMenu()
             }
@@ -767,7 +815,8 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
                     }
                     self.activityError = nil
                 } else {
-                    self.activityError = result.error.isEmpty ? "Could not read local activity." : result.error
+                    self.activityError = result.error.isEmpty ? "Activity could not be loaded."
+                        : "Activity could not be loaded: \(result.error)"
                 }
                 self.updateActivity()
             }
@@ -957,15 +1006,18 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
         } else if activityLoading {
             lines.append(("Loading activity…", .note))
         } else {
-            lines.append(("Activity will appear after the helper starts.", .note))
+            lines.append(("Activity appears after Codex Whip starts watching.", .note))
         }
         if activityLoading && dashboard?.history != nil {
             lines += [("", .body), ("Updating activity…", .note)]
         }
         if let error = activityError {
-            lines += [("", .body), ("Activity could not be loaded: \(error)", .body)]
+            lines += [("", .body), (error, .body)]
         }
-        if let error = helperError ?? dashboardError ?? dashboard?.state?.lastError {
+        // A stopped watcher leaves its last error in the saved state; only a running one is current.
+        let watcherRunning: Bool
+        if case .running = phase { watcherRunning = dashboard?.running == true } else { watcherRunning = false }
+        if let error = helperError ?? dashboardError ?? (watcherRunning ? watcherError : nil) {
             lines += [("", .body), ("Status: \(error)", .body)]
         }
         let size = NSFont.systemFontSize

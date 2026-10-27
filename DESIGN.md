@@ -39,7 +39,10 @@ Sparkle owns its standard update and relaunch dialogs. Public GitHub feeds and d
 in-app update delivery.
 
 Activity is a small readable native report with the last 24-hour totals and recent events. Startup,
-missing Codex, paused, waiting, and running states must be truthful. Counts come from the engine's
+missing Codex, paused, waiting, running, updating, and failed states must be truthful: a helper that
+stopped or could not start never reads as Paused, preferences that cannot load never read as
+preparing, and countdowns appear only while watching, never beside an error. Errors use the app's
+name and plain words, with details in tooltips and the Activity report. Counts come from the engine's
 last successful scan. Successful retries mean two uninterrupted minutes of observed activity,
 or successful completion sooner. The report explains this without waiting for the whole task.
 Keep separate Capacity and Quota recovery counts. Show a quota status row only while quota waits

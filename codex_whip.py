@@ -714,6 +714,7 @@ def read_json(path):
 def resolve_socket(codex_home):
     path = codex_home / "app-server-control/app-server-control.sock"
     if not path.exists():
+        # The native app recognizes this opening and shows plain words instead of the path.
         raise RPCError(f"Codex daemon socket is unavailable: {path}. Open Codex first.")
     return path
 

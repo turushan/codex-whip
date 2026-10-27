@@ -288,6 +288,14 @@ class AppHelperTests(unittest.TestCase):
             self.assertFalse(helper.process_alive(123))
             probe.assert_called_once_with(123, 0)
 
+    def test_missing_codex_error_opens_with_the_words_the_native_app_recognizes(self):
+        # The menu replaces this error, socket path included, with plain words.
+        source = (MODULE_PATH.parent / "native/App.swift").read_text()
+        recognized = source.split('missingCodexMessage = "', 1)[1].split('"', 1)[0]
+        with self.assertRaises(helper.RPCError) as raised:
+            helper.resolve_socket(self.home / ".codex")
+        self.assertTrue(str(raised.exception).startswith(recognized + ":"), str(raised.exception))
+
     def exercise_parent_shutdown(self, during_step, initial_parent=123, lose_ui=False):
         self.saved_state()
         actual_parent = initial_parent
