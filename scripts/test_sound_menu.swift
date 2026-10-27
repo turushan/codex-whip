@@ -3,6 +3,13 @@
 import AppKit
 import Foundation
 
+// The app defines WhipCrack beside its entry point. Substitute a recorder here
+// so this standalone test can check previews without playing audio.
+enum WhipCrack {
+    static var playCount = 0
+    static func play() { playCount += 1 }
+}
+
 private struct TestFailure: LocalizedError {
     let errorDescription: String?
     init(_ message: String) { errorDescription = message }
@@ -33,6 +40,7 @@ private struct SoundMenuTests {
         try check(!item.isEnabled && item.state == .off, "Sound is off and disabled until preferences are ready")
         NSApp.sendAction(action, to: item.target, from: item)
         try check(try store.read() == custom && changed == 0, "An unready action must not change preferences")
+        try check(WhipCrack.playCount == 0, "An unready action must not preview sound")
 
         controller.isReady = true
         try check(item.isEnabled && item.state == .off, "Ready preferences show the unchecked native menu item")
@@ -41,17 +49,21 @@ private struct SoundMenuTests {
         expected.soundEnabled = true
         try check(try store.read() == expected, "The action enables sound and preserves custom timing and message")
         try check(item.state == .on && changed == 1, "The action immediately checks the item and reports one change")
+        try check(WhipCrack.playCount == 1, "Turning sound on previews it exactly once")
         NSApp.sendAction(action, to: item.target, from: item)
         try check(try store.read() == custom, "The next action turns sound off without changing other preferences")
         try check(item.state == .off && changed == 2, "Turning sound off immediately unchecks the item")
+        try check(WhipCrack.playCount == 1, "Turning sound off must not preview it")
 
         try store.update { $0.soundEnabled = true }
         controller.refresh()
         try check(item.state == .on && changed == 2, "The menu reflects external CLI changes without saving or previewing")
+        try check(WhipCrack.playCount == 1, "Refreshing external preferences must not preview sound")
         controller.isReady = false
         try check(!item.isEnabled, "A paused preparation state disables the sound control")
         NSApp.sendAction(action, to: item.target, from: item)
         try check(try store.read().soundEnabled && changed == 2, "A disabled action preserves the saved sound preference")
+        try check(WhipCrack.playCount == 1, "A disabled action must not preview sound")
         try check(NSApp.activationPolicy() == .prohibited && !NSApp.isActive, "QA must never activate the application")
     }
 
