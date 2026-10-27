@@ -17,6 +17,8 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate, SPUStandardUserDriverDeleg
     private var foundVersion: String?
     private var lastError: String?
     private static let quietCheckMigrationKey = "QuietUpdateChecksMigrated"
+    private static let automaticUpdatesChoiceKey = "AutomaticUpdatesChosen"
+    private static let automaticUpdatesMigrationKey = "AutomaticUpdatesDefaultApplied"
 
     private(set) var availableUpdateVersion: String?
 
@@ -70,6 +72,7 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate, SPUStandardUserDriverDeleg
             self?.onChange?()
         }
         migrateQuietUpdateChecks()
+        applyAutomaticUpdatesDefault()
         let arguments = ProcessInfo.processInfo.arguments
         if isolated && testFeed != nil && arguments.contains("--test-update-toggle") {
             // Test Sparkle's actual preference setters before starting its
@@ -103,6 +106,7 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate, SPUStandardUserDriverDeleg
         // Daily checks can announce a release without downloading or installing it.
         updater.automaticallyChecksForUpdates = true
         updater.automaticallyDownloadsUpdates = enabled
+        UserDefaults.standard.set(true, forKey: Self.automaticUpdatesChoiceKey)
         record("automatic-updates-changed")
         onChange?()
     }
@@ -118,6 +122,20 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate, SPUStandardUserDriverDeleg
         updater.automaticallyChecksForUpdates = true
         UserDefaults.standard.set(true, forKey: Self.quietCheckMigrationKey)
         record("quiet-update-checks-enabled")
+    }
+
+    /// Automatic Updates start on. Earlier versions could save "off" without the person choosing it,
+    /// through the identity change in 1.10 or the update window's checkbox, so this turns it on
+    /// once. A choice made later from the menu is kept.
+    private func applyAutomaticUpdatesDefault() {
+        guard !isolated,
+              !UserDefaults.standard.bool(forKey: Self.automaticUpdatesMigrationKey),
+              !UserDefaults.standard.bool(forKey: Self.automaticUpdatesChoiceKey),
+              let updater = controller?.updater else { return }
+        updater.automaticallyChecksForUpdates = true
+        updater.automaticallyDownloadsUpdates = true
+        UserDefaults.standard.set(true, forKey: Self.automaticUpdatesMigrationKey)
+        record("automatic-updates-default-applied")
     }
 
     private func testAutomaticUpdatesToggle() {
