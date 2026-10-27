@@ -609,11 +609,22 @@ final class CoreEngineFixture {
     }
 
     // test_status_uses_saved_counts_and_reports_stopped_as_zero
-    // NEEDS SEAM: Service.status calls workerRunning(_:) and Service.serviceRunning() (real launchctl)
-    // and printActivity directly. Inject a "service running" provider (and an activity printer) to port
-    // the enabled/stopped cases without touching real launchd.
-    @Test(.disabled("NEEDS SEAM: Service.status has no injectable serviceRunning/printActivity"))
-    func statusUsesSavedCountsAndReportsStoppedAsZero() {}
+    @Test func statusUsesSavedCountsAndReportsStoppedAsZero() throws {
+        let state: JSON = ["sessions": ["total": 9, "active": 3, "idle": 6], "pending": [:], "last_scan_at": 1000]
+        for (enabled, expected) in [(true, "Watching: 9 terminal sessions (3 active, 6 idle)"),
+                                    (false, "Watching: 0 terminal sessions (stopped)")] {
+            let directory = try coreTemporaryDirectory()
+            defer { try? FileManager.default.removeItem(at: directory) }
+            try Data(try state.serialized().utf8).write(to: directory.appendingPathComponent("state.json"))
+            var lines: [String] = []
+            // serviceRunning and activity stand in for the patched service_running and print_activity.
+            try Service.status(directory: directory, serviceRunning: { enabled }, activity: { _ in },
+                               output: { lines.append($0) })
+            let output = lines.joined(separator: "\n")
+            #expect(output.contains(expected), "enabled \(enabled)")
+            #expect(output.contains("Checks: every 5 minutes. Capacity retries: every 3 minutes."), "enabled \(enabled)")
+        }
+    }
 
     // test_history_reconciles_crash_between_state_save_and_event_write
     @Test func historyReconcilesCrashBetweenStateSaveAndEventWrite() throws {
@@ -639,16 +650,50 @@ final class CoreEngineFixture {
         #expect(retry["ts"]?.number == 1400)
     }
 
+    private func report(_ fields: [String: JSON]) -> JSON {
+        var value: [String: JSON] = [:]
+        for name in History.quotaCounters { value[name] = 0 }
+        value.merge(fields) { _, new in new }
+        return .object(value)
+    }
+
     // test_cli_report_describes_recovery_success_and_awaiting_recovery
-    // NEEDS SEAM: Service.printActivity reads History.report(directory:...) itself. Inject the report
-    // (or a report provider) to feed the scripted report this test used through mock.patch(read_report).
-    @Test(.disabled("NEEDS SEAM: Service.printActivity has no injectable report"))
-    func cliReportDescribesRecoverySuccessAndAwaitingRecovery() {}
+    @Test func cliReportDescribesRecoverySuccessAndAwaitingRecovery() throws {
+        let report = report([
+            "available": true, "capacity": 4, "retries": 3, "successful": 2,
+            "failed": 0, "failed_capacity": 0, "failed_other": 0, "interrupted": 0,
+            "awaiting": 1, "uncertain": 0, "recorded_since": nil,
+            "recent": [["event": "retry_result", "status": "completed", "ts": 1200,
+                        "thread_id": "session", "capacity": false]],
+        ])
+        var lines: [String] = []
+        Service.printActivity(report: report, output: { lines.append($0) })
+        let output = lines.joined(separator: "\n")
+        #expect(output.contains("Successful: 2"))
+        #expect(output.contains("Awaiting recovery: 1"))
+        #expect(output.contains("2 minutes of continuously observed healthy activity"))
+        #expect(output.contains("retry successful"))
+    }
 
     // test_cli_report_names_sessions_by_the_end_of_their_ids
-    // NEEDS SEAM: same as above, Service.printActivity needs an injectable History.report result.
-    @Test(.disabled("NEEDS SEAM: Service.printActivity has no injectable report"))
-    func cliReportNamesSessionsByTheEndOfTheirIds() {}
+    @Test func cliReportNamesSessionsByTheEndOfTheirIds() throws {
+        // Neighboring sessions share a timestamp prefix; only the ending tells them apart.
+        let report = report([
+            "available": true, "capacity": 2, "retries": 0, "successful": 0,
+            "failed": 0, "failed_capacity": 0, "failed_other": 0, "interrupted": 0,
+            "awaiting": 0, "uncertain": 0, "recorded_since": nil,
+            "recent": .array(["7f3a", "c2d9"].map { suffix in
+                ["event": "capacity", "ts": 1200, "capacity": true,
+                 "thread_id": .string("019a2b3c-4d5e-7f00-8a1b-00000000\(suffix)")]
+            }),
+        ])
+        var lines: [String] = []
+        Service.printActivity(report: report, output: { lines.append($0) })
+        let output = lines.joined(separator: "\n")
+        #expect(output.contains(" · 00007f3a · capacity error found"))
+        #expect(output.contains(" · 0000c2d9 · capacity error found"))
+        #expect(!output.contains("019a2b3c"))
+    }
 }
 
 final class CoreEvents {
