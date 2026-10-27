@@ -31,7 +31,7 @@ from settings import (DEFAULT_MESSAGE, DEFAULT_SETTINGS, ScanScheduler, Settings
 from whip_sound import RetrySound
 
 
-VERSION = "1.10.0"
+VERSION = "1.10.1"
 LABEL = "com.turushan.codex-whip"
 INTERVAL = DEFAULT_SETTINGS["retry_seconds"]
 SCAN_INTERVAL = DEFAULT_SETTINGS["scan_seconds"]

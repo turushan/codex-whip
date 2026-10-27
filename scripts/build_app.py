@@ -133,26 +133,12 @@ def main():
         shutil.copy2(license_path, contents / "Resources/ThirdPartyLicenses/Python-runtime.txt")
     run(["codesign", "--force", "--deep", "--sign", "-", "--timestamp=none", app])
     run(["codesign", "--verify", "--deep", "--strict", app])
-    stage = build / "dmg"
-    if stage.exists():
-        shutil.rmtree(stage)
-    stage.mkdir()
-    shutil.copytree(app, stage / app.name, symlinks=True)
-    (stage / "Applications").symlink_to("/Applications", target_is_directory=True)
-    (stage / "Read Me.txt").write_text(
-        "Codex Whip\n\n"
-        "Drag Codex Whip into Applications, then open it.\n"
-        "Requires macOS 14 or newer and Codex CLI with its shared local daemon.\n\n"
-        "This community build is ad-hoc signed, without Developer ID signing or Apple notarization.\n"
-        "If macOS blocks the first launch, try opening the app, then visit System Settings >\n"
-        "Privacy & Security > Open Anyway if you trust this download.\n"
-        "Apple's instructions: https://support.apple.com/en-us/102445\n\n"
-        "Source and build instructions: https://github.com/turushan/codex-whip\n"
-    )
     disk = output / f"Codex-Whip-{architecture}.dmg"
     disk.unlink(missing_ok=True)
-    run(["hdiutil", "create", "-volname", NAME, "-srcfolder", stage,
-         "-format", "UDZO", "-ov", disk])
+    # The installer window: background, icon positions and the volume icon (scripts/dmg_settings.py).
+    run([interpreter, "-m", "dmgbuild", "-s", ROOT / "scripts/dmg_settings.py",
+         "-D", f"app={app}", "-D", f"assets={ROOT / 'assets/dmg'}",
+         "-D", f"icon={contents / 'Resources/AppIcon.icns'}", NAME, disk])
     digest = hashlib.sha256(disk.read_bytes()).hexdigest()
     (output / "SHA256SUMS.txt").write_text(f"{digest}  {disk.name}\n")
     print(f"\nBuilt {app}\nBuilt {disk}\nSHA256 {digest}")
