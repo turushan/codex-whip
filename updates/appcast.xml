@@ -1,0 +1,27 @@
+<?xml version="1.0" standalone="yes"?><!-- sparkle-sign-warning:
+IMPORTANT: This file was signed by Sparkle. Any modifications to this file requires re-signing this file with generate_appcast or sign_update! The signed signature will be embedded at the end of this file.
+--><rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+    <channel>
+        <title>Codex Whip</title>
+        <item>
+            <title>1.11.0</title>
+            <pubDate>Tue, 27 Oct 2026 17:44:22 +0100</pubDate>
+            <link>https://github.com/turushan/codex-whip</link>
+            <sparkle:version>1.11.0</sparkle:version>
+            <sparkle:shortVersionString>1.11.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <description sparkle:format="plain-text"><![CDATA[Codex Whip is now one universal app for Apple silicon and Intel Macs, with its engine rewritten in Swift. It starts faster and no longer unpacks a Python runtime each time it opens.
+
+New: About Codex Whip in the menu. Turning on Whip Sound plays the crack once.
+
+Automatic Updates is on by default. If it was turned off without you choosing it, this update turns it back on once.
+
+Your settings, pending retries and Activity history carry over unchanged.
+]]></description>
+            <enclosure url="https://github.com/turushan/codex-whip/releases/download/v1.11.0/Codex-Whip.dmg" length="20405149" type="application/octet-stream" sparkle:edSignature="zo8bfUva/a6nvD0HWXwZmEKtJPXRz8jGxKRm9kCMC83hrV40tTYfuIHynTBKMjXVQQw/zHeEmsexQTXpQ5cHBA=="></enclosure>
+        </item>
+    </channel>
+</rss><!-- sparkle-signatures:
+edSignature: YAwWJ6yKhAF7nWIXv3CHDKTJt7eQ/DbCdBp3MktgGdVV1NEoP0J3KH+uwm0nwyg4YxzYaBb/7NFldxieu4xIBw==
+length: 1649
+-->
