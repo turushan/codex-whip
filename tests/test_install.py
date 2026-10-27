@@ -29,7 +29,7 @@ class InstallationTests(unittest.TestCase):
         self.home.mkdir()
         self.directory = self.home / "Library/Application Support/Codex Whip"
         self.codex_home = self.home / ".codex"
-        self.plist = self.home / "Library/LaunchAgents/com.aktay.codex-keep-going.plist"
+        self.plist = self.home / "Library/LaunchAgents/com.turushan.codex-whip.plist"
         self.command = self.home / ".local/bin/codex-whip"
         self.launch = subprocess.CompletedProcess([], 0, stdout="", stderr="")
         self.runner = self.enter(mock.patch.object(helper.subprocess, "run", return_value=self.launch))
@@ -79,7 +79,7 @@ class InstallationTests(unittest.TestCase):
         self.assertTrue(self.command.is_symlink())
         self.assertEqual(self.command.resolve(), MODULE_PATH.resolve())
         launch_agent = plistlib.loads(self.plist.read_bytes())
-        self.assertEqual(launch_agent["Label"], "com.aktay.codex-keep-going")
+        self.assertEqual(launch_agent["Label"], "com.turushan.codex-whip")
         self.assertTrue(launch_agent["RunAtLoad"])
         self.assertIn(str(MODULE_PATH.resolve()), launch_agent["ProgramArguments"])
         self.assertIn(str(self.directory), launch_agent["ProgramArguments"])

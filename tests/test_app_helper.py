@@ -57,7 +57,7 @@ class AppHelperTests(unittest.TestCase):
         (directory / "state.json").write_text(json.dumps(state, indent=4) + "\n")
         return state
 
-    def legacy_job(self, arguments=None, environment=None):
+    def cli_job(self, arguments=None, environment=None):
         path = helper.agent_path()
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(plistlib.dumps({
@@ -90,10 +90,10 @@ class AppHelperTests(unittest.TestCase):
         self.assertEqual(history.read_bytes(), b"existing-history")
         self.assertEqual(helper.read_json(self.directory / "state.json"), state)
 
-    def test_default_prepare_stops_legacy_job_before_preserving_latest_state(self):
+    def test_default_prepare_stops_cli_job_before_preserving_latest_state(self):
         directory = helper.default_state_directory()
         self.saved_state(directory)
-        self.legacy_job()
+        self.cli_job()
         latest = {"version": 1, "enabled_at": 123, "pending": {"updated": {"due_at": 999}}}
 
         def stop_and_flush_latest_state():
@@ -106,19 +106,19 @@ class AppHelperTests(unittest.TestCase):
         stop.assert_called_once_with()
         self.assertEqual(helper.read_json(directory / "state.json"), latest)
 
-    def test_default_prepare_removes_unloaded_legacy_job_file(self):
+    def test_default_prepare_removes_unloaded_cli_job_file(self):
         directory = helper.default_state_directory()
-        self.legacy_job()
+        self.cli_job()
         with (mock.patch.object(helper.sys, "platform", "darwin"),
               mock.patch.object(helper, "service_running", return_value=False),
               mock.patch.object(helper, "stop_service") as stop):
             helper.prepare_state(directory)
         stop.assert_called_once_with()
 
-    def assert_refused_legacy_job(self, arguments=None, environment=None, malformed=None, missing=False):
+    def assert_refused_cli_job(self, arguments=None, environment=None, malformed=None, missing=False):
         directory = helper.default_state_directory()
         self.saved_state(directory)
-        path = self.legacy_job(arguments, environment)
+        path = self.cli_job(arguments, environment)
         if malformed is not None:
             path.write_bytes(malformed)
         if missing:
@@ -135,28 +135,28 @@ class AppHelperTests(unittest.TestCase):
         self.assertEqual(path.read_bytes() if path.exists() else None, job_before)
 
     def test_prepare_refuses_cli_job_with_custom_state_directory(self):
-        self.assert_refused_legacy_job(arguments=[
+        self.assert_refused_cli_job(arguments=[
             "python3", str(MODULE_PATH), "--state-dir", str(self.directory), "_run",
         ])
 
     def test_prepare_refuses_cli_job_with_custom_codex_home_argument(self):
-        self.assert_refused_legacy_job(arguments=[
+        self.assert_refused_cli_job(arguments=[
             "python3", str(MODULE_PATH), "--codex-home=" + str(self.root / "other-codex"), "_run",
         ])
 
     def test_prepare_refuses_cli_job_with_custom_codex_home_environment(self):
-        self.assert_refused_legacy_job(environment={"CODEX_HOME": str(self.root / "other-codex")})
+        self.assert_refused_cli_job(environment={"CODEX_HOME": str(self.root / "other-codex")})
 
     def test_prepare_refuses_malformed_existing_plist(self):
-        self.assert_refused_legacy_job(malformed=b"invalid plist")
+        self.assert_refused_cli_job(malformed=b"invalid plist")
 
     def test_prepare_refuses_running_cli_job_without_launch_file(self):
-        self.assert_refused_legacy_job(missing=True)
+        self.assert_refused_cli_job(missing=True)
 
     def test_prepare_resolves_explicit_default_paths_and_argument_precedence(self):
         directory = helper.default_state_directory()
         self.saved_state(directory)
-        self.legacy_job(arguments=[
+        self.cli_job(arguments=[
             "python3", str(MODULE_PATH), "--state-dir", str(directory / "unused/.."),
             "--codex-home", str(self.home / ".codex"), "_run",
         ], environment={"CODEX_HOME": str(self.root / "overridden-home")})
@@ -170,7 +170,7 @@ class AppHelperTests(unittest.TestCase):
         directory = helper.default_state_directory()
         self.saved_state(directory)
         codex_home = self.root / "shared-codex"
-        self.legacy_job(environment={"CODEX_HOME": str(codex_home)})
+        self.cli_job(environment={"CODEX_HOME": str(codex_home)})
         with (mock.patch.object(helper.sys, "platform", "darwin"),
               mock.patch.object(helper, "service_running", return_value=True),
               mock.patch.object(helper, "stop_service") as stop,
@@ -227,7 +227,7 @@ class AppHelperTests(unittest.TestCase):
         executable = self.root / "Contents/Helpers/whip-helper"
         executable.parent.mkdir(parents=True)
         executable.write_bytes(b"test executable")
-        plist = self.home / "Library/LaunchAgents/com.aktay.codex-keep-going.plist"
+        plist = self.home / "Library/LaunchAgents/com.turushan.codex-whip.plist"
         args = argparse.Namespace(thread=[], preserve_state=False)
         completed = subprocess.CompletedProcess([], 0, stdout="", stderr="")
         with (mock.patch.object(helper.sys, "platform", "darwin"),
@@ -262,7 +262,7 @@ class AppHelperTests(unittest.TestCase):
         self.saved_state()
         output = io.StringIO()
         with (mock.patch.object(helper, "worker_running", return_value=True),
-              mock.patch.object(helper, "service_running", side_effect=AssertionError("No legacy job needed")),
+              mock.patch.object(helper, "service_running", side_effect=AssertionError("No CLI job needed")),
               contextlib.redirect_stdout(output)):
             helper.status(self.directory)
         self.assertTrue(output.getvalue().startswith("Enabled\n"))

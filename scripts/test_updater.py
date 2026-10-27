@@ -49,38 +49,38 @@ def read_report(path):
         return {}
 
 
-def test_case(app, tools, base, tamper, legacy_app=None):
+def test_case(app, tools, base, tamper):
     case = base / ("tampered" if tamper else "automatic")
     case.mkdir()
     state = case / "state"
     report = case / "updates.json"
-    domain = f"com.aktay.codex-keep-going.qa.{uuid.uuid4().hex}"
+    domain = f"com.turushan.codex-whip.qa.{uuid.uuid4().hex}"
     handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(case))
     server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     url = f"http://127.0.0.1:{server.server_port}/"
-    baseline = case / ("installed/Codex Keep Going QA.app" if legacy_app else "installed/Codex Whip QA.app")
+    baseline = case / "installed/Codex Whip QA.app"
     target = case / "target/Codex Whip QA.app"
     target_version = plistlib.loads((app / "Contents/Info.plist").read_bytes())["CFBundleVersion"]
     baseline_version = "1.0.0"
     for path, version in ((baseline, baseline_version), (target, target_version)):
-        shutil.copytree(legacy_app if path == baseline and legacy_app else app, path, symlinks=True)
+        shutil.copytree(app, path, symlinks=True)
         info_path = path / "Contents/Info.plist"
         info = plistlib.loads(info_path.read_bytes())
         info.update({
             "CFBundleIdentifier": domain,
-            "CFBundleName": "Codex Keep Going QA" if path == baseline and legacy_app else "Codex Whip QA",
-            "CFBundleDisplayName": "Codex Keep Going QA" if path == baseline and legacy_app else "Codex Whip QA",
+            "CFBundleName": "Codex Whip QA",
+            "CFBundleDisplayName": "Codex Whip QA",
             "CFBundleVersion": version,
             "CFBundleShortVersionString": version,
             "SUDefaultsDomain": domain,
             "SUFeedURL": url + "appcast.xml",
             "SUAutomaticallyUpdate": True,
             "SUEnableAutomaticChecks": True,
-            "KeepGoingQAStateDirectory": str(state),
-            "KeepGoingQACodexHome": str(case / "missing-codex"),
-            "KeepGoingQAUpdateFeed": url + "appcast.xml",
-            "KeepGoingQAUpdateReport": str(report),
+            "WhipQAStateDirectory": str(state),
+            "WhipQACodexHome": str(case / "missing-codex"),
+            "WhipQAUpdateFeed": url + "appcast.xml",
+            "WhipQAUpdateReport": str(report),
             "NSAppTransportSecurity": {"NSAllowsArbitraryLoads": True},
         })
         info_path.write_bytes(plistlib.dumps(info))
@@ -96,7 +96,7 @@ def test_case(app, tools, base, tamper, legacy_app=None):
         data[len(data) // 2] ^= 1
         archive.write_bytes(data)
     # Seed saved state/history with local fixture metadata; no Codex endpoint exists.
-    helper = next(path for path in (baseline / "Contents/Helpers/whip-helper", baseline / "Contents/Helpers/keep-going-helper") if path.exists())
+    helper = baseline / "Contents/Helpers/whip-helper"
     run([helper, "--state-dir", state, "prepare"])
     state_path = state / "state.json"
     before = json.loads(state_path.read_text())
@@ -146,14 +146,13 @@ def test_case(app, tools, base, tamper, legacy_app=None):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--app", type=Path, default=ROOT / "dist/Codex Whip.app")
-    parser.add_argument("--legacy-app", type=Path, help="An existing pre-rename app for a genuine old-to-new update check")
     args = parser.parse_args()
     tools = sparkle.distribution(ROOT)
     base = ROOT / "build/updater-qa" / uuid.uuid4().hex
     base.mkdir(parents=True)
     print(f"QA evidence: {base}", flush=True)
     for tamper in (False, True):
-        test_case(args.app.resolve(), tools, base, tamper, args.legacy_app.resolve() if args.legacy_app else None)
+        test_case(args.app.resolve(), tools, base, tamper)
 
 
 if __name__ == "__main__":

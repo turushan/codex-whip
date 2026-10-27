@@ -83,7 +83,7 @@ def main():
         "CFBundleDevelopmentRegion": "en",
         "CFBundleDisplayName": NAME,
         "CFBundleExecutable": EXECUTABLE,
-        "CFBundleIdentifier": "com.aktay.codex-keep-going.app",
+        "CFBundleIdentifier": "com.turushan.codex-whip",
         "CFBundleInfoDictionaryVersion": "6.0",
         "CFBundleName": NAME,
         "CFBundlePackageType": "APPL",

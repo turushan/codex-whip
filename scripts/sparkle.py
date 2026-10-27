@@ -11,7 +11,7 @@ import urllib.request
 VERSION = "2.10.1"
 SHA256 = "1a856d2a9edb8e628de88121d7be04cf0e2167f8641650b78fca00b14244cf27"
 PUBLIC_KEY = "TpY4sWpjeIKQgoPdsO3wgg4zTqf0koP5if0uXK75hLw="
-KEYCHAIN_ACCOUNT = "com.aktay.codex-keep-going"
+KEYCHAIN_ACCOUNT = "com.turushan.codex-whip"
 REPOSITORY = "https://github.com/turushan/codex-whip"
 FEED_ROOT = "https://raw.githubusercontent.com/turushan/codex-whip/main/updates"
 

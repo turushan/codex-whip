@@ -30,7 +30,7 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate, SPUStandardUserDriverDeleg
     init(isolated: Bool) {
         self.isolated = isolated
         let environment = ProcessInfo.processInfo.environment
-        let qaFeed = isIsolatedQABundle() ? Bundle.main.object(forInfoDictionaryKey: "KeepGoingQAUpdateFeed") as? String : nil
+        let qaFeed = isIsolatedQABundle() ? Bundle.main.object(forInfoDictionaryKey: "WhipQAUpdateFeed") as? String : nil
         let rawFeed = environment["CODEX_WHIP_UPDATE_FEED"] ?? qaFeed
         if isolated, let rawFeed,
            let url = URL(string: rawFeed),
@@ -40,7 +40,7 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate, SPUStandardUserDriverDeleg
         } else {
             testFeed = nil
         }
-        let qaReport = isIsolatedQABundle() ? Bundle.main.object(forInfoDictionaryKey: "KeepGoingQAUpdateReport") as? String : nil
+        let qaReport = isIsolatedQABundle() ? Bundle.main.object(forInfoDictionaryKey: "WhipQAUpdateReport") as? String : nil
         if isolated, let path = environment["CODEX_WHIP_UPDATE_REPORT"] ?? qaReport, !path.isEmpty {
             reportURL = URL(fileURLWithPath: NSString(string: path).expandingTildeInPath)
         } else {

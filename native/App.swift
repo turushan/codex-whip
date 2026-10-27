@@ -244,7 +244,7 @@ private final class WorkerSupervisor {
 
     var onChange: ((Phase, Int32?, Bool) -> Void)?
     private let helper: HelperClient
-    private let queue = DispatchQueue(label: "com.aktay.codex-keep-going.supervisor", qos: .utility)
+    private let queue = DispatchQueue(label: "com.turushan.codex-whip.supervisor", qos: .utility)
     private var worker: Worker?
     private var prepared = false
     private var shouldRun = false
@@ -391,8 +391,8 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
     private var timer: Timer?
     private var helper: HelperClient!
     private var supervisor: WorkerSupervisor!
-    private let dashboardQueue = DispatchQueue(label: "com.aktay.codex-keep-going.dashboard", qos: .utility)
-    private let activityQueue = DispatchQueue(label: "com.aktay.codex-keep-going.activity", qos: .utility)
+    private let dashboardQueue = DispatchQueue(label: "com.turushan.codex-whip.dashboard", qos: .utility)
+    private let activityQueue = DispatchQueue(label: "com.turushan.codex-whip.activity", qos: .utility)
     private var dashboard: Dashboard?
     private var refreshInProgress = false
     private var activityLoading = false
@@ -419,7 +419,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
         installMainMenu()
         let environment = ProcessInfo.processInfo.environment
         let qaBundle = isIsolatedQABundle()
-        let qaState = qaBundle ? Bundle.main.object(forInfoDictionaryKey: "KeepGoingQAStateDirectory") as? String : nil
+        let qaState = qaBundle ? Bundle.main.object(forInfoDictionaryKey: "WhipQAStateDirectory") as? String : nil
         let override = environment["CODEX_WHIP_STATE_DIR"] ?? qaState
         isolated = override != nil || qaBundle
         let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -429,7 +429,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
             : support.appendingPathComponent(appName, isDirectory: true)
         let directory = override.map { URL(fileURLWithPath: NSString(string: $0).expandingTildeInPath) }
             ?? defaultDirectory
-        let qaCodexHome = qaBundle ? Bundle.main.object(forInfoDictionaryKey: "KeepGoingQACodexHome") as? String : nil
+        let qaCodexHome = qaBundle ? Bundle.main.object(forInfoDictionaryKey: "WhipQACodexHome") as? String : nil
         let fixtureHome = qaCodexHome.flatMap { $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : $0 }
         let codexHome = isolated
             ? (fixtureHome ?? directory.appendingPathComponent("missing-codex", isDirectory: true).path)

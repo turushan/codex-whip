@@ -1,7 +1,7 @@
 # Publishing a release
 
 Builds need no private update key. Publishing updates requires the release Ed25519 key in the
-maintainer's login Keychain, under account `com.aktay.codex-keep-going` and the Sparkle update-key item.
+maintainer's login Keychain, under account `com.turushan.codex-whip` and the Sparkle update-key item.
 Its public key is committed in `scripts/sparkle.py`. Keep a secure backup of this Keychain key;
 an ad hoc signed app cannot recover a lost update key through Apple's Developer ID key rotation.
 Never commit or upload the private key.

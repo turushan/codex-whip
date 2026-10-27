@@ -40,7 +40,7 @@ private struct PreferencesTests {
     static func bundle(at url: URL, defaults: Any?) throws -> Bundle {
         let contents = url.appendingPathComponent("Contents", isDirectory: true)
         try FileManager.default.createDirectory(at: contents, withIntermediateDirectories: true)
-        var info: [String: Any] = ["CFBundleIdentifier": "com.aktay.codex-whip.preferences-test.\(UUID().uuidString)",
+        var info: [String: Any] = ["CFBundleIdentifier": "com.turushan.codex-whip.preferences-test.\(UUID().uuidString)",
                                    "CFBundlePackageType": "BNDL", "CFBundleName": "Preferences QA"]
         if let defaults { info["WhipDefaultSettings"] = defaults }
         let data = try PropertyListSerialization.data(fromPropertyList: info, format: .xml, options: 0)

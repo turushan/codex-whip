@@ -41,7 +41,7 @@ class Fixture:
     def __init__(self, app, tools, base, current):
         self.directory = base / ("current" if current else "available")
         self.directory.mkdir()
-        self.domain = "com.aktay.codex-keep-going.qa.notice." + uuid.uuid4().hex
+        self.domain = "com.turushan.codex-whip.qa.notice." + uuid.uuid4().hex
         self.state = self.directory / "state"
         self.report = self.directory / "updates.json"
         self.app = self.directory / "installed/Codex Whip Notice QA.app"
@@ -80,10 +80,10 @@ class Fixture:
                 "SUFeedURL": url + "appcast.xml",
                 "SUEnableAutomaticChecks": False,
                 "SUAutomaticallyUpdate": False,
-                "KeepGoingQAStateDirectory": str(self.state),
-                "KeepGoingQACodexHome": str(self.directory / "missing-codex"),
-                "KeepGoingQAUpdateFeed": url + "appcast.xml",
-                "KeepGoingQAUpdateReport": str(self.report),
+                "WhipQAStateDirectory": str(self.state),
+                "WhipQACodexHome": str(self.directory / "missing-codex"),
+                "WhipQAUpdateFeed": url + "appcast.xml",
+                "WhipQAUpdateReport": str(self.report),
                 "NSAppTransportSecurity": {"NSAllowsArbitraryLoads": True},
             })
             info_path.write_bytes(plistlib.dumps(info))

@@ -28,7 +28,7 @@ A local macOS menu bar app and command-line helper for retrying Codex terminal c
 - Use `doctor` for read-only checks against an installed Codex daemon.
 - Document signing and notarization truthfully. Do not recommend disabling Gatekeeper globally.
 - Keep the private Sparkle update key in Keychain. Verify signed feeds and archives before installation.
-- Preserve the existing native bundle ID and update key across the Codex Whip rename; migrate user data only after confirming the old worker stopped.
+- Keep the bundle ID `com.turushan.codex-whip` and the Sparkle update key stable; installed apps update only while both stay the same.
 - Verify the built app's architecture, deployment target, bundled helper, and launch behavior before publishing a release.
 
 ## Validation

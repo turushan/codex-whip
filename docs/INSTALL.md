@@ -66,16 +66,12 @@ The native app manages its own helper process and macOS login item. On startup i
 optional CLI service's login job from the default state directory before taking over that worker.
 It preserves the saved session scope and state.
 
-### Renaming from Codex Keep Going
+### Updating to 1.10
 
-Codex Whip preserves its updater key, internal bundle identifier, and login preferences.
-At the first stopped-worker migration, it moves the old default
-`~/Library/Application Support/Codex Keep Going/` directory to
-`~/Library/Application Support/Codex Whip/`, retaining history, pending waits, and the send journal.
-It refuses conflicting data directories or unrecognized custom services instead of overwriting them.
-
-An automatic update can retain the old outer `.app` filename even though the title and icon change.
-Install the new DMG if you want the filename `Codex Whip.app`. Quit the previous copy before replacing it.
+Version 1.10 gives the app its own identifier, `com.turushan.codex-whip`. Settings, pending waits,
+the send journal and history stay in `~/Library/Application Support/Codex Whip/` and carry over.
+macOS keeps Start at Login and the Automatic Updates choice per identifier, so turn them on again once
+from the menu after the update.
 
 ## Build from source
 
@@ -244,7 +240,7 @@ Files are restricted to your macOS user and contain session IDs and retry metada
 Conversation bodies and credentials are not stored. Quota waits retain only a private hash binding
 to the observed account in `state.json`; account identity and raw usage responses are excluded from
 history and diagnostic events. The optional CLI login job is
-`~/Library/LaunchAgents/com.aktay.codex-keep-going.plist`; this internal identifier remains stable.
+`~/Library/LaunchAgents/com.turushan.codex-whip.plist`.
 The native app uses its own login item.
 
 ## Connection troubleshooting
