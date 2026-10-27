@@ -17,3 +17,6 @@ dist/
 *.cer
 *.certSigningRequest
 .env
+
+# Swift package build output.
+engine/.build/

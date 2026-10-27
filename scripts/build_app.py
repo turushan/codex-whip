@@ -153,7 +153,7 @@ def main():
     run(["iconutil", "-c", "icns", iconset, "-o", contents / "Resources/AppIcon.icns"])
     shutil.copy2(ROOT / "LICENSE", contents / "Resources/LICENSE.txt")
     shutil.copy2(demo, contents / "Resources/Demo.mp4")
-    shutil.copy2(ROOT / "assets/sounds/whip.wav", contents / "Resources/Whip.wav")
+    shutil.copy2(ROOT / "engine/Sources/WhipEngine/Resources/whip.wav", contents / "Resources/Whip.wav")
     if (ROOT / "licenses").exists():
         shutil.copytree(ROOT / "licenses", contents / "Resources/ThirdPartyLicenses")
     shutil.copy2(sparkle_distribution / "LICENSE", contents / "Resources/ThirdPartyLicenses/Sparkle.txt")

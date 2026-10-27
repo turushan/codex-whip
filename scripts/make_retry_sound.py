@@ -49,7 +49,7 @@ def render():
 
 
 def main():
-    output = Path(__file__).resolve().parents[1] / "assets/sounds/whip.wav"
+    output = Path(__file__).resolve().parents[1] / "engine/Sources/WhipEngine/Resources/whip.wav"
     output.parent.mkdir(parents=True, exist_ok=True)
     rate, data = render()
     with wave.open(str(output), "wb") as sound:
