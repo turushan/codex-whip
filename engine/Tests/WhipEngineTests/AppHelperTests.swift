@@ -1,6 +1,6 @@
 // Ported from tests/test_app_helper.py: native-app helper commands, isolated from the user's
-// services and Codex. In-process tests use only custom state directories and never reach
-// launchctl. Parent-shutdown tests run the built `codex-whip` worker as a child process against
+// services and Codex. In-process tests use a temporary home and a recording launchctl through
+// ServiceEnvironment, so nothing reaches the real ~/Library or launchd. Parent-shutdown tests run the built `codex-whip` worker as a child process against
 // a temporary state directory and a local Codex socket stub.
 
 import Foundation
@@ -31,6 +31,13 @@ private struct AppSandbox {
     /// Where the default state directory would be with this sandbox as home.
     var defaultDirectory: URL { home.appendingPathComponent("Library/Application Support/Codex Whip") }
     var agentPath: URL { home.appendingPathComponent("Library/LaunchAgents/\(Paths.label).plist") }
+
+    /// A service environment rooted in this sandbox, with launchctl answered by `launchd`.
+    func env(_ launchd: RecordingLaunchd, variables: [String: String]? = nil,
+             executable: URL = URL(fileURLWithPath: "/unused/codex-whip")) -> ServiceEnvironment {
+        ServiceEnvironment(home: home, variables: variables ?? ["CODEX_HOME": codexHome.path],
+                           launchctl: launchd.launchctl, monotonic: { 0 }, sleep: { _ in }, executable: { executable })
+    }
 
     static let stateText = """
         {
@@ -83,6 +90,45 @@ private struct AppSandbox {
     }
 }
 
+/// A launchd stand-in that records every launchctl call and answers from a running flag.
+final class RecordingLaunchd: @unchecked Sendable {
+    private let lock = NSLock()
+    private var recorded: [[String]] = []
+    var running: Bool
+    var onBootout: (() -> Void)?
+
+    init(running: Bool) { self.running = running }
+
+    var calls: [[String]] {
+        lock.lock()
+        defer { lock.unlock() }
+        return recorded
+    }
+
+    func calls(_ verb: String) -> [[String]] { calls.filter { $0.first == verb } }
+    var bootouts: Int { calls("bootout").count }
+
+    func launchctl(_ arguments: [String]) -> (status: Int32, error: String) {
+        lock.lock()
+        recorded.append(arguments)
+        lock.unlock()
+        switch arguments.first {
+        case "print":
+            return running ? (0, "") : (113, "Could not find service")
+        case "bootout":
+            onBootout?()
+            let wasRunning = running
+            running = false
+            return wasRunning ? (0, "") : (3, "Boot-out failed: 3: No such process")
+        case "bootstrap":
+            running = true
+            return (0, "")
+        default:
+            return (1, "unexpected launchctl call")
+        }
+    }
+}
+
 /// Holds the worker lock the way a running worker does, from a separate open file description.
 private func holdWorkerLock(_ directory: URL) throws -> Int32 {
     let descriptor = open(directory.appendingPathComponent("worker.lock").path, O_WRONLY | O_CREAT | O_CLOEXEC, 0o600)
@@ -125,44 +171,57 @@ private func mode(_ url: URL) throws -> Int {
     }
 
     // test_default_prepare_stops_cli_job_before_preserving_latest_state
-    // NEEDS SEAM: Service.serviceRunning and Service.stopService call /bin/launchctl directly; inject
-    // a launchd client so the test can report a running job and flush the latest state on stop.
-    @Test(.disabled("NEEDS SEAM: Service.serviceRunning/stopService run the real launchctl"))
-    func defaultPrepareStopsCLIJobBeforePreservingLatestState() {}
+    @Test func defaultPrepareStopsCLIJobBeforePreservingLatestState() throws {
+        let sandbox = try AppSandbox()
+        defer { sandbox.remove() }
+        let directory = sandbox.defaultDirectory
+        try sandbox.savedState(directory)
+        try sandbox.cliJob()
+        let latest: JSON = ["version": 1, "enabled_at": 123, "pending": ["updated": ["due_at": 999]]]
+        let launchd = RecordingLaunchd(running: true)
+        launchd.onBootout = {
+            // The stopping CLI worker flushes its latest state.
+            try? Data(try! latest.serialized().utf8).write(to: directory.appendingPathComponent("state.json"))
+        }
+        try Service.prepareState(directory: directory, env: sandbox.env(launchd))
+        #expect(launchd.bootouts == 1)
+        #expect(try FileStore.readJSON(directory.appendingPathComponent("state.json")) == latest)
+    }
 
     // test_default_prepare_removes_unloaded_cli_job_file
-    // NEEDS SEAM: Service.stopService runs the real `launchctl bootout`; inject a launchd client.
-    @Test(.disabled("NEEDS SEAM: Service.serviceRunning/stopService run the real launchctl"))
-    func defaultPrepareRemovesUnloadedCLIJobFile() {}
+    @Test func defaultPrepareRemovesUnloadedCLIJobFile() throws {
+        let sandbox = try AppSandbox()
+        defer { sandbox.remove() }
+        let directory = sandbox.defaultDirectory
+        let path = try sandbox.cliJob()
+        let launchd = RecordingLaunchd(running: false)
+        try Service.prepareState(directory: directory, env: sandbox.env(launchd))
+        #expect(launchd.bootouts == 1)
+        #expect(!FileManager.default.fileExists(atPath: path.path))
+    }
 
-    /// Python ran prepare_state on the default directory and expected the refusal before any stop.
-    /// The Swift default directory comes from FileManager.homeDirectoryForCurrentUser, which ignores
-    /// HOME (a child process with a temporary HOME still prepares the real default path), so
-    /// prepareState cannot target a temporary default directory.
-    /// NEEDS SEAM: Paths.home, so prepareState can run against a temporary default directory.
-    /// Ported here: the launch-job reading that prepareState refuses on, checked against the
-    /// sandbox's default paths, with the saved state and launch file left byte for byte.
     private func assertRefusedCLIJob(arguments: [String]? = nil, environment: [String: String]? = nil,
-                                     malformed: Data? = nil) throws {
+                                     malformed: Data? = nil, missing: Bool = false) throws {
         let sandbox = try AppSandbox()
         defer { sandbox.remove() }
         let directory = sandbox.defaultDirectory
         try sandbox.savedState(directory)
         let path = try sandbox.cliJob(arguments: arguments, environment: environment)
         if let malformed { try malformed.write(to: path) }
+        if missing { try FileManager.default.removeItem(at: path) }
         let stateBefore = try Data(contentsOf: directory.appendingPathComponent("state.json"))
-        let jobBefore = try Data(contentsOf: path)
+        let jobBefore = try? Data(contentsOf: path)
+        let launchd = RecordingLaunchd(running: true)
         do {
-            let paths = try Service.cliJobPaths(path)
-            // prepareState refuses unless both the state directory and the Codex home match.
-            let explicitState = arguments?.contains { $0.hasPrefix("--state-dir") } ?? false
-            let stateMatches = !explicitState || paths.stateDirectory == Paths.resolve(directory.path)
-            #expect(!(stateMatches && paths.codexHome == Paths.resolve(sandbox.codexHome.path)), "\(paths)")
+            try Service.prepareState(directory: directory, env: sandbox.env(launchd))
+            Issue.record("prepareState did not refuse the CLI job")
         } catch let error as WhipError {
-            #expect(error.description.contains("Keep that service"), "\(error)")
+            #expect(error.description.contains("Keep that service")
+                    || error.description.range(of: "Keep that.*service", options: .regularExpression) != nil, "\(error)")
         }
+        #expect(launchd.bootouts == 0)
         #expect(try Data(contentsOf: directory.appendingPathComponent("state.json")) == stateBefore)
-        #expect(try Data(contentsOf: path) == jobBefore)
+        #expect((try? Data(contentsOf: path)) == jobBefore)
     }
 
     // test_prepare_refuses_cli_job_with_custom_state_directory
@@ -188,47 +247,49 @@ private func mode(_ url: URL) throws -> Int {
     }
 
     // test_prepare_refuses_running_cli_job_without_launch_file
-    // NEEDS SEAM: with no launch file, prepareState asks Service.serviceRunning, which runs the real
-    // `launchctl print`; inject a launchd client that reports a running job.
-    @Test(.disabled("NEEDS SEAM: Service.serviceRunning runs the real launchctl"))
-    func prepareRefusesRunningCLIJobWithoutLaunchFile() {}
+    @Test func prepareRefusesRunningCLIJobWithoutLaunchFile() throws {
+        try assertRefusedCLIJob(missing: true)
+    }
 
     // test_prepare_resolves_explicit_default_paths_and_argument_precedence
-    // Ported for the path decision only. NEEDS SEAM: the follow-up Service.stopService call runs
-    // the real launchctl, so prepareState itself is not run against a matching job.
     @Test func prepareResolvesExplicitDefaultPathsAndArgumentPrecedence() throws {
         let sandbox = try AppSandbox()
         defer { sandbox.remove() }
         let directory = sandbox.defaultDirectory
         try sandbox.savedState(directory)
-        let path = try sandbox.cliJob(arguments: [
+        try sandbox.cliJob(arguments: [
             "python3", "/unused/codex_whip.py", "--state-dir", directory.appendingPathComponent("unused/..").path,
             "--codex-home", sandbox.codexHome.path, "_run",
         ], environment: ["CODEX_HOME": sandbox.root.appendingPathComponent("overridden-home").path])
-        let paths = try Service.cliJobPaths(path)
-        #expect(paths.stateDirectory == Paths.resolve(directory.path))
-        #expect(paths.codexHome == Paths.resolve(sandbox.codexHome.path))
+        let launchd = RecordingLaunchd(running: true)
+        try Service.prepareState(directory: directory, codexHome: sandbox.codexHome, env: sandbox.env(launchd))
+        #expect(launchd.bootouts == 1)
     }
 
     // test_prepare_accepts_matching_recorded_codex_home_environment
-    // Ported for the path decision only. NEEDS SEAM: the follow-up Service.stopService call runs
-    // the real launchctl.
     @Test func prepareAcceptsMatchingRecordedCodexHomeEnvironment() throws {
         let sandbox = try AppSandbox()
         defer { sandbox.remove() }
+        let directory = sandbox.defaultDirectory
+        try sandbox.savedState(directory)
         let codexHome = sandbox.root.appendingPathComponent("shared-codex")
-        let path = try sandbox.cliJob(environment: ["CODEX_HOME": codexHome.path])
-        let paths = try Service.cliJobPaths(path)
-        #expect(paths.codexHome == Paths.resolve(codexHome.path))
-        #expect(paths.stateDirectory == Paths.resolve(Paths.defaultStateDirectory.path))
+        try sandbox.cliJob(environment: ["CODEX_HOME": codexHome.path])
+        let launchd = RecordingLaunchd(running: true)
+        try Service.prepareState(directory: directory, env: sandbox.env(launchd, variables: ["CODEX_HOME": codexHome.path]))
+        #expect(launchd.bootouts == 1)
     }
 
     // test_custom_prepare_does_not_even_inspect_default_job
-    // Swift has no seam to fail on inspection; a custom directory never reaches the launch-job checks.
     @Test func customPrepareDoesNotEvenInspectDefaultJob() throws {
         let sandbox = try AppSandbox()
         defer { sandbox.remove() }
-        try Service.prepareState(directory: sandbox.directory)
+        let job = try sandbox.cliJob()
+        let jobBefore = try Data(contentsOf: job)
+        let launchd = RecordingLaunchd(running: true)
+        // Python failed on any inspection of the default job; here no launchctl call may happen.
+        try Service.prepareState(directory: sandbox.directory, env: sandbox.env(launchd))
+        #expect(launchd.calls.isEmpty, "\(launchd.calls)")
+        #expect(try Data(contentsOf: job) == jobBefore)
         #expect(FileManager.default.fileExists(atPath: sandbox.directory.appendingPathComponent("state.json").path))
     }
 
@@ -282,14 +343,26 @@ private func mode(_ url: URL) throws -> Int {
     }
 
     // test_frozen_install_runs_executable_without_temporary_source_path
-    // NEEDS SEAM: Service.startService runs the real `launchctl bootstrap` and writes to the real
-    // home (Paths.home); inject the home directory and a launchd client.
-    @Test(.disabled("NEEDS SEAM: Service.startService runs the real launchctl and uses the real home"))
-    func frozenInstallRunsExecutableWithoutTemporarySourcePath() {}
+    @Test func frozenInstallRunsExecutableWithoutTemporarySourcePath() throws {
+        let sandbox = try AppSandbox()
+        defer { sandbox.remove() }
+        let executable = sandbox.root.appendingPathComponent("Contents/Helpers/whip-helper")
+        try FileManager.default.createDirectory(at: executable.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data("test executable".utf8).write(to: executable)
+        let launchd = RecordingLaunchd(running: false)
+        let env = sandbox.env(launchd, executable: Paths.resolve(executable.path))
+        try Service.startService(directory: sandbox.directory, codexHome: sandbox.codexHome, threads: [],
+                                 preserveState: false, env: env, output: { _ in })
+        let job = try PropertyListSerialization.propertyList(from: Data(contentsOf: sandbox.agentPath), format: nil)
+            as? [String: Any]
+        let program = try #require(job?["ProgramArguments"] as? [String])
+        #expect(program[0] == Paths.resolve(executable.path).path)
+        #expect(program[1] == "--state-dir")
+        #expect(!program.contains { $0.hasSuffix("codex_whip.py") })
+        #expect(Paths.resolve(sandbox.home.appendingPathComponent(".local/bin/codex-whip").path) == Paths.resolve(executable.path))
+    }
 
     // test_cli_start_does_not_install_another_job_when_native_worker_is_running
-    // Paths.home is the real home in-process, so the command link and launch job are checked for
-    // being left exactly as they were rather than for absence in a temporary home.
     @Test func cliStartDoesNotInstallAnotherJobWhenNativeWorkerIsRunning() throws {
         let sandbox = try AppSandbox()
         defer { sandbox.remove() }
@@ -297,18 +370,16 @@ private func mode(_ url: URL) throws -> Int {
         let before = try Data(contentsOf: sandbox.directory.appendingPathComponent("state.json"))
         let lock = try holdWorkerLock(sandbox.directory)
         defer { close(lock) }
-        // The held lock is what keeps startService away from launchctl; prove it first.
-        try #require(workerRunning(sandbox.directory))
-        let command = ServiceEnvironment.live.commandLink
-        let linkBefore = Service.exists(command)
-        let agentBefore = FileManager.default.fileExists(atPath: Paths.agentPath.path)
+        let launchd = RecordingLaunchd(running: false)
         let output = Lines()
         try Service.startService(directory: sandbox.directory, codexHome: sandbox.codexHome, threads: [],
-                                 preserveState: false, output: output.append)
+                                 preserveState: false, env: sandbox.env(launchd), output: output.append)
         #expect(output.text.contains("Already enabled"))
+        // The worker already owns the state, so launchd is never asked.
+        #expect(launchd.calls.isEmpty, "\(launchd.calls)")
         #expect(try Data(contentsOf: sandbox.directory.appendingPathComponent("state.json")) == before)
-        #expect(Service.exists(command) == linkBefore)
-        #expect(FileManager.default.fileExists(atPath: Paths.agentPath.path) == agentBefore)
+        #expect(!Service.exists(sandbox.home.appendingPathComponent(".local/bin/codex-whip")))
+        #expect(!FileManager.default.fileExists(atPath: sandbox.agentPath.path))
     }
 
     // test_cli_status_recognizes_native_worker_without_a_launch_agent
