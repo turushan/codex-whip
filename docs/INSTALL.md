@@ -8,8 +8,9 @@ eject the DMG. Apple silicon and Intel downloads require macOS 14 or later.
 Python is bundled; no separate Python installation is needed to run the app.
 
 The app appears in the menu bar. Open Codex CLI normally, then use the menu to pause or resume
-watching, choose **Start at Login**, or open **Activity**. Quitting the app stops its helper and
-leaves any Codex turn already running alone.
+watching, choose **Start at Login**, or open **Activity**. If macOS needs your approval first, the
+item reads **Approve Start at Login…** and opens Login Items in System Settings. Quitting the app
+stops its helper and leaves any Codex turn already running alone.
 
 Choose **Watch Demo** for an illustrated film of capacity retries, a scheduled quota renewal and an
 early reset announcement. The bundled video includes original sound, with native pause, seek, replay,

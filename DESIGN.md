@@ -19,6 +19,8 @@ The first lines answer whether retries are enabled, how many sessions are watche
 is waiting. The actions are Pause/Resume, Start at Login, Retry Every, Check Every, Retry Message,
 update controls, Activity, Watch Demo, and Quit Codex Whip. Activity and Watch Demo only show
 information, so they take no ellipsis. Quit names the app and sits after its own separator.
+While macOS awaits approval, Start at Login reads Approve Start at Login… and opens Login Items in
+System Settings; it never unregisters the pending item.
 
 Retry Every and Check Every are native submenus with checked selections and labeled defaults.
 Their titles use title-style capitalization and spelled-out units, such as Retry Every 3 Minutes

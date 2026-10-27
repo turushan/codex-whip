@@ -720,9 +720,9 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
         case .enabled:
             loginItem.state = .on
         case .requiresApproval:
-            loginItem.state = .mixed
-            loginItem.title = "Start at Login (Approval Required)"
-            loginItem.toolTip = "Approve Codex Whip in System Settings → General → Login Items."
+            loginItem.state = .off
+            loginItem.title = "Approve Start at Login…"
+            loginItem.toolTip = "Open Login Items in System Settings to allow Codex Whip to start at login."
         case .notFound:
             loginItem.state = .off
             loginItem.isEnabled = false
@@ -838,8 +838,16 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
     }
 
     @objc private func toggleLogin() {
-        let current = SMAppService.mainApp.status
-        configureLogin(enabled: current != .enabled && current != .requiresApproval, presentError: true)
+        switch SMAppService.mainApp.status {
+        case .requiresApproval:
+            // The login item is registered and waits for the user in System Settings.
+            // Unregistering here would silently undo the choice instead.
+            SMAppService.openSystemSettingsLoginItems()
+        case .enabled:
+            configureLogin(enabled: false, presentError: true)
+        default:
+            configureLogin(enabled: true, presentError: true)
+        }
     }
 
     private func configureLogin(enabled: Bool, presentError: Bool) {
