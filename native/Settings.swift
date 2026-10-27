@@ -232,8 +232,11 @@ final class PreferencesMenuController: NSObject, NSMenuDelegate {
 
     @objc private func toggleSound(_ sender: NSMenuItem) {
         guard isReady else { return }
-        do { try update { $0.soundEnabled.toggle() } }
-        catch { /* The main menu displays the local write error. */ }
+        do {
+            try update { $0.soundEnabled.toggle() }
+            // Turning the sound on plays it once, so the choice is heard at once.
+            if soundItem.state == .on { WhipCrack.play() }
+        } catch { /* The main menu displays the local write error. */ }
     }
 
     @objc private func useDefaultMessage(_ sender: NSMenuItem) {

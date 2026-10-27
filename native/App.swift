@@ -568,7 +568,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
             let defaults = try PreferencesStore.bundledDefaults()
             let store = try PreferencesStore(directory: helper.stateDirectory, defaults: defaults)
             // Opening the app cracks the whip once when Whip Sound is on; quitting stays silent.
-            if !isolated, (try? store.read())?.soundEnabled == true { playLaunchCrack() }
+            if !isolated, (try? store.read())?.soundEnabled == true { WhipCrack.play() }
             let preferences = PreferencesMenuController(store: store)
             preferences.onChange = { [weak self] in
                 self?.updateMenu()
@@ -598,14 +598,6 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
         statusItem.button?.image = MenuBarIcon.whip(accessibilityDescription: appName)
         statusItem.button?.setAccessibilityLabel(appName)
         statusItem.menu = menu
-    }
-
-    private var launchCrack: NSSound?
-
-    private func playLaunchCrack() {
-        guard let url = Bundle.main.url(forResource: "Whip", withExtension: "wav") else { return }
-        launchCrack = NSSound(contentsOf: url, byReference: true)
-        launchCrack?.play()
     }
 
     @discardableResult
@@ -1174,5 +1166,17 @@ private enum ApplicationMain {
         let delegate = AppDelegate()
         application.delegate = delegate
         withExtendedLifetime(delegate) { application.run() }
+    }
+}
+
+/// The bundled crack, played asynchronously at the Mac's current volume.
+/// The sound is kept until it finishes, so a crack is never cut short.
+enum WhipCrack {
+    private static var sound: NSSound?
+
+    static func play() {
+        guard let url = Bundle.main.url(forResource: "Whip", withExtension: "wav") else { return }
+        sound = NSSound(contentsOf: url, byReference: true)
+        sound?.play()
     }
 }
