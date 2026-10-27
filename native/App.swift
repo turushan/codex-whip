@@ -462,6 +462,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
         let timer = Timer(timeInterval: 10, repeats: true) { [weak self] _ in self?.refreshDashboard() }
         RunLoop.main.add(timer, forMode: .common)
         self.timer = timer
+        if !isolated { restoreLogin() }
         let arguments = ProcessInfo.processInfo.arguments
         if arguments.contains("--enable-login") {
             if isolated {
@@ -846,9 +847,26 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
             // Unregistering here would silently undo the choice instead.
             SMAppService.openSystemSettingsLoginItems()
         case .enabled:
+            UserDefaults.standard.set(false, forKey: loginChoiceKey)
             configureLogin(enabled: false, presentError: true)
         default:
+            UserDefaults.standard.set(true, forKey: loginChoiceKey)
             configureLogin(enabled: true, presentError: true)
+        }
+    }
+
+    private let loginChoiceKey = "StartAtLogin"
+
+    /// macOS ties a login item to the app's code signature, so a new signing identity
+    /// can drop the registration. The saved choice registers the item again once.
+    private func restoreLogin() {
+        switch SMAppService.mainApp.status {
+        case .enabled:
+            UserDefaults.standard.set(true, forKey: loginChoiceKey)
+        case .notRegistered where UserDefaults.standard.bool(forKey: loginChoiceKey):
+            configureLogin(enabled: true, presentError: false)
+        default:
+            break
         }
     }
 

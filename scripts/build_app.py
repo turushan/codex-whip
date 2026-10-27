@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Build the self-contained menu bar app and an ad-hoc signed DMG on macOS."""
+"""Build the self-contained menu bar app and its DMG on macOS.
+
+Builds are ad hoc signed unless --identity names a Developer ID Application
+certificate in the keychain. scripts/notarize.py then notarizes that DMG.
+"""
 
 import argparse
 import hashlib
@@ -21,10 +25,34 @@ import sparkle
 ROOT = Path(__file__).resolve().parents[1]
 NAME = "Codex Whip"
 EXECUTABLE = "CodexWhip"
+BUNDLE_ID = "com.turushan.codex-whip"
 
 
 def run(arguments, **kwargs):
     subprocess.run([str(value) for value in arguments], check=True, cwd=ROOT, **kwargs)
+
+
+def sign(app, identity):
+    """Sign nested code first and the app last, never with --deep.
+
+    A Developer ID signature adds the hardened runtime and a secure timestamp,
+    which notarization requires. PyInstaller already signed the libraries inside
+    the helper with the same identity; only its outer signature is renewed here.
+    """
+    options = ["--force", "--sign", identity]
+    if identity == "-":
+        options += ["--timestamp=none"]
+    else:
+        options += ["--timestamp", "--options", "runtime"]
+    framework = app / "Contents/Frameworks/Sparkle.framework"
+    # The XPC services serve sandboxed apps only; this app is not sandboxed.
+    shutil.rmtree(framework / "Versions/B/XPCServices")
+    (framework / "XPCServices").unlink()
+    for code in (framework / "Versions/B/Autoupdate", framework / "Versions/B/Updater.app", framework):
+        run(["codesign", *options, code])
+    run(["codesign", *options, "--identifier", f"{BUNDLE_ID}.helper", app / "Contents/Helpers/whip-helper"])
+    run(["codesign", *options, app])
+    run(["codesign", "--verify", "--deep", "--strict", app])
 
 
 def main():
@@ -32,6 +60,8 @@ def main():
     parser.add_argument("--skip-install", action="store_true", help="Use existing build dependencies")
     parser.add_argument("--skip-tests", action="store_true", help="Skip tests already run for this source")
     parser.add_argument("--reuse-helper", action="store_true", help="Reuse an unchanged local helper when rebuilding the native menu")
+    parser.add_argument("--identity", default="-",
+                        help='Signing identity, such as "Developer ID Application: Name (TEAMID)"; ad hoc by default')
     args = parser.parse_args()
     if sys.platform != "darwin":
         parser.error("Build this macOS app on a Mac")
@@ -68,7 +98,7 @@ def main():
              "--distpath", build / "helper", "--workpath", build / "pyinstaller",
              "--specpath", build / "spec", "--target-arch", architecture,
              "--add-data", str(ROOT / "assets/sounds/whip.wav") + os.pathsep + "assets/sounds",
-             "--codesign-identity", "-", ROOT / "codex_whip.py"])
+             "--codesign-identity", args.identity, ROOT / "codex_whip.py"])
     app = output / f"{NAME}.app"
     if app.exists():
         shutil.rmtree(app)
@@ -84,7 +114,7 @@ def main():
         "CFBundleDevelopmentRegion": "en",
         "CFBundleDisplayName": NAME,
         "CFBundleExecutable": EXECUTABLE,
-        "CFBundleIdentifier": "com.turushan.codex-whip",
+        "CFBundleIdentifier": BUNDLE_ID,
         "CFBundleInfoDictionaryVersion": "6.0",
         "CFBundleName": NAME,
         "CFBundlePackageType": "APPL",
@@ -133,8 +163,7 @@ def main():
     ], text=True).strip()
     if Path(license_path).is_file():
         shutil.copy2(license_path, contents / "Resources/ThirdPartyLicenses/Python-runtime.txt")
-    run(["codesign", "--force", "--deep", "--sign", "-", "--timestamp=none", app])
-    run(["codesign", "--verify", "--deep", "--strict", app])
+    sign(app, args.identity)
     disk = output / f"Codex-Whip-{architecture}.dmg"
     disk.unlink(missing_ok=True)
     # The installer window: background, icon positions and the volume icon (scripts/dmg_settings.py).
@@ -150,6 +179,9 @@ def main():
             if attempt == 2:
                 raise
             time.sleep(10)
+    if args.identity != "-":
+        run(["codesign", "--force", "--sign", args.identity, "--timestamp",
+             "--identifier", f"{BUNDLE_ID}.dmg", disk])
     digest = hashlib.sha256(disk.read_bytes()).hexdigest()
     (output / "SHA256SUMS.txt").write_text(f"{digest}  {disk.name}\n")
     print(f"\nBuilt {app}\nBuilt {disk}\nSHA256 {digest}")

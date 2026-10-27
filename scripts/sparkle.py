@@ -16,6 +16,16 @@ REPOSITORY = "https://github.com/turushan/codex-whip"
 FEED_ROOT = "https://raw.githubusercontent.com/turushan/codex-whip/main/updates"
 
 
+REQUIRED = (
+    "Sparkle.framework/Versions/B/Sparkle",
+    "Sparkle.framework/Versions/B/Autoupdate",
+    "Sparkle.framework/Versions/B/Updater.app/Contents/MacOS/Updater",
+    "bin/generate_appcast",
+    "bin/sign_update",
+    "bin/generate_keys",
+)
+
+
 def distribution(root):
     cache = Path(root) / "build/sparkle"
     cache.mkdir(parents=True, exist_ok=True)
@@ -41,7 +51,9 @@ def _distribution(cache):
     # while another release command runs can invalidate its mapped code pages.
     extracted = cache / f"{VERSION}-{SHA256[:12]}"
     marker = extracted / ".archive-sha256"
-    if marker.exists() and marker.read_text() == SHA256:
+    # A cache with a missing part, such as a deleted Updater.app, is extracted again.
+    complete = all((extracted / part).exists() for part in REQUIRED)
+    if marker.exists() and marker.read_text() == SHA256 and complete:
         return extracted
     if extracted.exists():
         shutil.rmtree(extracted)

@@ -1,0 +1,81 @@
+name: Signed release build
+
+# Builds Developer ID signed, notarized and stapled DMGs for a release.
+# The signing secrets live in the "release" environment, which only main can use.
+# Publishing stays a local step: scripts/prepare_release.py signs the update feed
+# with the Sparkle key, which never leaves the maintainer's Keychain.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  signed-dmg:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-15, macos-15-intel]
+    runs-on: ${{ matrix.runner }}
+    environment: release
+    timeout-minutes: 60
+    env:
+      # The temporary keychain holds only the imported certificate, so its type names it.
+      IDENTITY: "Developer ID Application"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: "3.13"
+      - name: Import the Developer ID certificate into a temporary keychain
+        shell: bash
+        env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+        run: |
+          keychain="$RUNNER_TEMP/signing.keychain-db"
+          password="$(openssl rand -hex 24)"
+          echo "$MACOS_CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
+          security create-keychain -p "$password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$password" "$keychain"
+          security import "$RUNNER_TEMP/certificate.p12" -P "$MACOS_CERTIFICATE_PASSWORD" \
+            -A -t cert -f pkcs12 -k "$keychain"
+          security set-key-partition-list -S apple-tool:,apple: -k "$password" "$keychain" > /dev/null
+          security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
+          rm "$RUNNER_TEMP/certificate.p12"
+          security find-identity -v -p codesigning "$keychain" | grep -F "$IDENTITY"
+      - name: Build and sign the app and disk image
+        run: python3 scripts/build_app.py --identity "$IDENTITY"
+      - name: Check the signed helper under the hardened runtime
+        shell: bash
+        run: |
+          app="dist/Codex Whip.app"
+          codesign --display --verbose=2 "$app/Contents/Helpers/whip-helper" 2>&1 | grep -E "flags=.*runtime"
+          "$app/Contents/Helpers/whip-helper" --state-dir "$RUNNER_TEMP/codex-whip-smoke" prepare
+          "$app/Contents/Helpers/whip-helper" --state-dir "$RUNNER_TEMP/codex-whip-smoke" dashboard
+      - name: Notarize, staple and check the disk image
+        shell: bash
+        env:
+          NOTARY_KEY: ${{ secrets.NOTARY_KEY }}
+          NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
+          NOTARY_ISSUER: ${{ secrets.NOTARY_ISSUER }}
+        run: |
+          export NOTARY_KEY_PATH="$RUNNER_TEMP/notary.p8"
+          echo "$NOTARY_KEY" | base64 --decode > "$NOTARY_KEY_PATH"
+          python3 scripts/notarize.py dist/Codex-Whip-*.dmg
+          rm "$NOTARY_KEY_PATH"
+      - name: Upload the notarized disk image
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: codex-whip-signed-${{ matrix.runner }}
+          path: |
+            dist/*.dmg
+            dist/*-notary-log.json
+            dist/SHA256SUMS.txt
+          if-no-files-found: error
+      - name: Remove the temporary keychain
+        if: always()
+        shell: bash
+        run: security delete-keychain "$RUNNER_TEMP/signing.keychain-db" || true

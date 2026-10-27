@@ -46,8 +46,6 @@ Defaults: **check every five minutes · retry capacity every three minutes**. Pa
 
 Choose **Watch Demo** in the menu to see capacity retries, quota renewals, and an early reset in action, with sound.
 
-First launch blocked? This community build has no Apple notarization. [How to open it](docs/INSTALL.md#first-launch).
-
 Downloads, source, and in-app updates are publicly available through GitHub.
 
 <details>

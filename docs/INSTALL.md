@@ -32,18 +32,9 @@ from the beginning.
 
 ### First launch
 
-The downloadable app is ad hoc signed, without a Developer ID signature or Apple notarization.
-macOS may prevent its first launch because Apple cannot verify the developer or check the app.
-
-If you trust the downloaded copy and choose to proceed:
-
-1. Attempt to open **Codex Whip.app** once.
-2. Visit **System Settings → Privacy & Security** and select **Open Anyway** for this app.
-3. Confirm opening it when macOS asks again.
-
-This creates an exception for this app. Follow [Apple's guidance](https://support.apple.com/en-us/102445)
-if the option is unavailable or a different security alert appears. Organization-managed Macs
-can restrict these choices.
+Release downloads are signed with a Developer ID certificate and notarized by Apple, so the app
+opens like any other Mac app. Versions before 1.10.3 were ad hoc signed; they update to a notarized
+version through **Check for Updates…** without any extra step.
 
 ### Updating
 
@@ -95,7 +86,7 @@ DMG, and checksums in `dist/`. An Apple silicon build produces
 `dist/Codex-Whip-arm64.dmg`. Build on an Intel Mac to produce an Intel version.
 
 The generated app is ad hoc signed. Building locally does not provide a Developer ID signature
-or Apple notarization.
+or Apple notarization; the [release guide](RELEASING.md) describes the signed release build.
 Source builds use the official release update feeds and public key. They can receive official
 updates when a compatible release exists for their architecture. Disable **Automatic Updates**
 if you want to manage your build yourself. Building the app requires no private signing key.

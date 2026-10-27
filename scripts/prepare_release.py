@@ -25,6 +25,10 @@ def main():
     if not match or not archive.is_file():
         parser.error("Provide an existing Codex-Whip-arm64.dmg or Codex-Whip-x86_64.dmg")
     architecture = match[1]
+    # Releases ship notarized; the Sparkle signature must cover the stapled image.
+    if subprocess.run(["xcrun", "stapler", "validate", archive], stdout=subprocess.DEVNULL,
+                      stderr=subprocess.DEVNULL).returncode:
+        parser.error("The DMG carries no notarization ticket; build it with the Signed release build workflow")
     version = re.search(r'^VERSION = "([^"]+)"', (ROOT / "codex_whip.py").read_text(), re.M)[1]
     distribution = sparkle.distribution(ROOT)
     public_key = subprocess.check_output([

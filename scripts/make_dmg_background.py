@@ -2,7 +2,7 @@
 """Draw the installer window's background in the film's blueprint look, at 1x and 2x.
 
 The disk image opens to a 660 by 480 point window: the app on the left, Applications on the right
-and an arrow between them, then the three first-launch steps people take themselves. Finder draws icon labels white in dark
+and an arrow between them, then what to do after installing. Finder draws icon labels white in dark
 mode and black in light mode, so each label sits on a chip whose luminance gives both at least 4.5:1.
 The positions here must match ICONS in scripts/build_app.py. Needs Pillow and the macOS font SF.
 """
@@ -81,16 +81,16 @@ def draw(scale):
     chip = chip_color()
     for cx, width in ((APP, 118), (APPLICATIONS, 112)):
         d.rounded_rectangle([s(cx - width / 2), s(ICON_Y + LABEL - 12), s(cx + width / 2), s(ICON_Y + LABEL + 12)], s(12), fill=chip)
-    # A hairline between installing and the first launch.
+    # A hairline between installing and what comes next.
     d.line([(s(40), s(300)), (s(WIDTH - 40), s(300))], fill=(*CYAN, 60), width=max(1, s(1)))
     heading, step = font(s(15), 700), font(s(13), 450)
-    lines = ["1   Open Codex Whip. When macOS stops it, choose Done.",
-             "2   Open System Settings, then Privacy & Security, and scroll to the very bottom.",
-             "3   Click Open Anyway next to Codex Whip, and confirm."]
+    lines = ["1   Open Codex Whip from Applications. It lives in the menu bar.",
+             "2   Use Codex CLI as usual. When Codex stops, Whip keeps it working."]
     x = (WIDTH - max(d.textlength(line, font=step) for line in lines) / scale) / 2
-    d.text((s(x), s(322)), "First launch blocked?", font=heading, fill=(244, 249, 255))
+    d.text((s(x), s(326)), "After installing", font=heading, fill=(244, 249, 255))
     for index, line in enumerate(lines):
-        d.text((s(x), s(356 + index * 28)), line, font=step, fill=(184, 214, 236))
+        d.text((s(x), s(360 + index * 28)), line, font=step, fill=(184, 214, 236))
+    centered("Notarized by Apple", 432, small, (120, 170, 205))
     return card.convert("RGB")
 
 

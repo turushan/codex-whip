@@ -2,9 +2,17 @@
 
 Builds need no private update key. Publishing updates requires the release Ed25519 key in the
 maintainer's login Keychain, under account `com.turushan.codex-whip` and the Sparkle update-key item.
-Its public key is committed in `scripts/sparkle.py`. Keep a secure backup of this Keychain key;
-an ad hoc signed app cannot recover a lost update key through Apple's Developer ID key rotation.
-Never commit or upload the private key.
+Its public key is committed in `scripts/sparkle.py`. Keep a secure backup of this Keychain key and
+never commit or upload it. Apps signed before 1.10.3 were ad hoc signed and cannot recover a lost
+update key through Apple's Developer ID key rotation.
+
+Release DMGs are signed with a Developer ID Application certificate, notarized by Apple and
+stapled. The **Signed release build** workflow (`.github/workflows/release.yml`) does this on
+GitHub's macOS runners. Its secrets live in the `release` environment, which only `main` can use:
+`MACOS_CERTIFICATE` (the base64 `.p12`), `MACOS_CERTIFICATE_PASSWORD`, and an App Store Connect
+Team API key with the Developer role as `NOTARY_KEY` (the base64 `.p8`), `NOTARY_KEY_ID` and
+`NOTARY_ISSUER`. Local builds stay ad hoc unless `scripts/build_app.py --identity` names a
+certificate in the keychain.
 
 Release downloads and update feeds are public. Verify final feed and asset URLs without GitHub
 authentication, matching how installed apps access updates.
@@ -15,7 +23,14 @@ authentication, matching how installed apps access updates.
    python3 scripts/build_app.py
    ```
 
-2. Commit and push the source. Verify the clean Apple silicon and Intel GitHub builds.
+2. Commit and push the source. Verify the clean Apple silicon and Intel GitHub builds, then run
+   the **Signed release build** workflow and download both notarized DMGs:
+
+   ```sh
+   gh workflow run release.yml
+   gh run download <run-id> -n codex-whip-signed-macos-15 -n codex-whip-signed-macos-15-intel -D build/signed
+   ```
+
    Test the built app, including pause/resume/quit and an isolated update check.
    A maintainer with the release Keychain key can run the signed local upgrade and tamper test:
 
@@ -33,13 +48,15 @@ authentication, matching how installed apps access updates.
 3. Prepare the update feed using the release Keychain key. Plain text notes are optional:
 
    ```sh
-   python3 scripts/prepare_release.py dist/Codex-Whip-arm64.dmg --notes build/release-notes.txt
+   python3 scripts/prepare_release.py build/signed/codex-whip-signed-macos-15/Codex-Whip-arm64.dmg --notes build/release-notes.txt
    ```
 
    The script verifies the signing key, signs the DMG and feed with Sparkle's pinned tools,
    checks the feed signature and archive version, writes `updates/appcast-arm64.xml`, and
    refreshes `dist/SHA256SUMS.txt`. It never exports the private key.
-   It must fail if the release key is missing or does not match the embedded public key.
+   It must fail if the release key is missing or does not match the embedded public key, or if
+   the DMG carries no stapled notarization ticket. Stapling changes the DMG, so the Sparkle
+   signature is always made after notarization.
 
 4. Create the matching GitHub release with the DMG and `SHA256SUMS.txt`. Use a tag matching
    `VERSION`, such as `v1.6.0`, and target the tested source commit. Verify the asset
