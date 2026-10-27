@@ -4,30 +4,33 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
     <channel>
         <title>Codex Whip</title>
         <item>
-            <title>1.8.1</title>
-            <pubDate>Mon, 26 Oct 2026 23:21:24 +0100</pubDate>
+            <title>1.9.0</title>
+            <pubDate>Tue, 27 Oct 2026 10:23:10 +0100</pubDate>
             <link>https://github.com/turushan/codex-whip</link>
-            <sparkle:version>1.8.1</sparkle:version>
-            <sparkle:shortVersionString>1.8.1</sparkle:shortVersionString>
+            <sparkle:version>1.9.0</sparkle:version>
+            <sparkle:shortVersionString>1.9.0</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
             <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="plain-text"><![CDATA[Codex Whip 1.8.1
+            <description sparkle:format="plain-text"><![CDATA[Codex Whip 1.9.0
 
-A quiet heads-up when a new version is ready.
+A cleaner menu, a clearer Activity window and the new film.
 
-• A new update is available… appears at the top of the menu with an orange dot.
-• Click the notice to review the update and choose when to install.
-• With Automatic Updates off, quiet daily checks stay on while new updates wait for your choice.
-• Existing preferences migrate once without enabling automatic downloads.
+• The menu drops its name row, spells out intervals such as Retry Every 3 Minutes and ends with Quit Codex Whip.
+• Activity shows times such as Today at 6:38 AM, session ID endings and clear headings, and refreshes while it is open.
+• Copy, paste, undo and Command-W now work in the retry message editor and the app’s windows.
+• Approve Start at Login… opens System Settings instead of turning the option off.
+• When something goes wrong, the menu says so plainly: Stopped unexpectedly, Couldn’t start or Codex isn’t open.
+• The update notice names the new version.
+• Watch Demo plays the new film, which ends on codexwhip.com.
 
 Your retry settings, session state, history, app identity and update-verification key are preserved.
 
 macOS 14 or later. This community build is ad hoc signed and is not Apple-notarized.
 ]]></description>
-            <enclosure url="https://github.com/turushan/codex-whip/releases/download/v1.8.1/Codex-Whip-arm64.dmg" length="25588015" type="application/octet-stream" sparkle:edSignature="dcdFdQy1+7uAp8gMQh8KKSEzPS+H5hwO+jSWOiJDpk6APPx1JrMkVWW08BsbhkHjPbrTMU1TPrUxrdh/ghmBCw=="></enclosure>
+            <enclosure url="https://github.com/turushan/codex-whip/releases/download/v1.9.0/Codex-Whip-arm64.dmg" length="25631357" type="application/octet-stream" sparkle:edSignature="vKCCMQuOKmE6UkSqmaGtp3u0zxjpl1FnaAoF+ekQjg3j9824gm/cPVEgP73ZBhu7hWCxDXN9qNFiURzRGzLHDw=="></enclosure>
         </item>
     </channel>
 </rss><!-- sparkle-signatures:
-edSignature: lOCSjkqVy+wzYmVPSqHVz2g8GrEDJsr/TsWOgGikzds7c9Hoicm4k3Hrclqw3LBPdKHYNnZLLOZSFG6IvIFRBQ==
-length: 1857
+edSignature: dnI3TfBexDHPxdDuW9vl4oY91ybeQH77iNcWioiOwllg+VK1lNViPAfUd8eAvG8xjdkAxqnQqi/0MXv+HnOqCg==
+length: 2192
 -->
