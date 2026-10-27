@@ -30,7 +30,7 @@ from settings import (DEFAULT_MESSAGE, DEFAULT_SETTINGS, ScanScheduler, Settings
                       read_settings, save_settings, settings_envelope, validate_settings)
 
 
-VERSION = "1.8.1"
+VERSION = "1.9.0"
 LABEL = "com.aktay.codex-keep-going"
 INTERVAL = DEFAULT_SETTINGS["retry_seconds"]
 SCAN_INTERVAL = DEFAULT_SETTINGS["scan_seconds"]
