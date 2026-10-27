@@ -41,18 +41,16 @@ can restrict these choices.
 
 ### Updating
 
-The repository is currently private. GitHub downloads require access to this repository.
-The app's update feed uses unauthenticated GitHub URLs and cannot fetch private releases.
-Until a publicly accessible feed is available, download a release manually, quit the app,
-replace its copy in Applications, and reopen it. Your settings and history remain outside the bundle.
-
-With a publicly accessible feed:
+Release downloads and update feeds are public. No GitHub sign-in is required.
 
 Choose **Check for Updates…** to check GitHub immediately and install an available release.
 The app checks quietly once a day. **Automatic Updates** enables background downloads, installation,
 and automatic relaunch. With it off, a new release appears as **A new update is available…** at the
 top of the menu. Click it to review and install; nothing downloads until you choose to install.
 Update feeds and archives are verified with the app's embedded Ed25519 public key by Sparkle.
+
+For a manual update, quit the app, replace its copy in Applications, and reopen it.
+Your settings and history remain outside the bundle.
 
 Version 1.2.0 needs one manual upgrade: quit it, replace its copy in Applications with the new
 release, and open it again. The private state directory sits outside the app bundle, so pending

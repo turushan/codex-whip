@@ -6,6 +6,7 @@ A local macOS menu bar app and command-line helper for retrying Codex terminal c
 
 - Work directly on `main` unless another branch is requested. Preserve unrelated work and commit only owned paths.
 - Use plain, public-facing commit messages without internal ticket numbers.
+- Keep documentation focused on shipped behavior and contributor workflows. Keep personal setup notes, research, and conversation records outside Git.
 - Never merge archived development history into this repository.
 - Keep the model, reasoning effort, permissions, service tier, and conversation settings unchanged on retries.
 - Retry only the latest failed capacity or supported usage-quota turn. Both `idle` and `systemError` are inactive runtime states.

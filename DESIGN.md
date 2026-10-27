@@ -1,15 +1,13 @@
 # Design
 
-The user specified a super-simple native menu bar utility. The approved direction is one monochrome
-whip icon and a standard macOS menu. The user chose a whip as the playful "keep going" metaphor.
+Codex Whip uses one monochrome whip icon and a standard macOS menu.
 The static 18-point template echoes the large icon: a broad rounded loop, a diagonal grip at the lower
 right (2.6-point stroke), and a filled rope outline tapering from a thick attachment to a fine tip.
 The tail curls away from the grip, preserving a visible gap at actual menu size. AppKit supplies its
 native tint and highlighted appearance. Keep the accessible name "Codex Whip". Preserve system typography, spacing,
 separators, keyboard behavior, and accessibility. The app follows light and dark system appearance.
 
-The large application icon follows the user's Mac developer-tool references, including Xcode and
-DevCleaner: a dimensional braided brown whip over a luminous cyan-to-blue blueprint tile, with fine
+The large application icon uses a dimensional braided brown whip over a luminous cyan-to-blue blueprint tile, with fine
 grid lines, construction guides, a beveled rim, and an open curl. Preserve the generated source PNG,
 prompt, and provenance under `assets/`. The native icon export applies a clean rounded mask and
 downsamples that artwork into the standard macOS icon sizes.
@@ -33,8 +31,8 @@ save. Opening the menu reads local `settings.json` directly; interval choices an
 write it atomically. Defaults come from the app bundle, and existing custom values remain intact.
 
 Keep Check for Updates… and a checkable Automatic Updates item in the same native menu treatment.
-Sparkle owns its standard update and relaunch dialogs. The repository is currently private, so
-public automatic update delivery is unavailable.
+Sparkle owns its standard update and relaunch dialogs. Public GitHub feeds and downloads support
+in-app update delivery.
 
 Activity is a small readable native report with the last 24-hour totals and recent events. Startup,
 missing Codex, paused, waiting, and running states must be truthful. Counts come from the engine's

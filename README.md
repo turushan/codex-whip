@@ -47,7 +47,7 @@ Choose **Watch Demo…** in the menu to see capacity retries, quota renewals, an
 
 First launch blocked? This community build has no Apple notarization. [How to open it](docs/INSTALL.md#first-launch).
 
-The repository is currently private. Downloads require GitHub access; in-app updates need a publicly accessible feed.
+Downloads, source, and in-app updates are publicly available through GitHub.
 
 <details>
 <summary><strong>Build it yourself</strong></summary>

@@ -6,10 +6,8 @@ Its public key is committed in `scripts/sparkle.py`. Keep a secure backup of thi
 an ad hoc signed app cannot recover a lost update key through Apple's Developer ID key rotation.
 Never commit or upload the private key.
 
-The repository is currently private. Preserve its visibility unless the owner explicitly asks to
-change it. Verify private release downloads with authenticated GitHub access. Installed apps use
-unauthenticated feed and asset URLs, so private GitHub releases require manual installation;
-signed files alone do not make a private feed accessible.
+Release downloads and update feeds are public. Verify final feed and asset URLs without GitHub
+authentication, matching how installed apps access updates.
 
 1. Update `VERSION` in `codex_whip.py`, then run the tests and build:
 
@@ -45,7 +43,7 @@ signed files alone do not make a private feed accessible.
 
 4. Create the matching GitHub release with the DMG and `SHA256SUMS.txt`. Use a tag matching
    `VERSION`, such as `v1.6.0`, and target the tested source commit. Verify the asset
-   download and checksum with access appropriate to the repository's current visibility.
+   download and checksum without GitHub authentication.
 
 5. Commit and push the prepared architecture feeds under `updates/`. Installed apps read their
    feed and signed DMG from GitHub without authentication. Automatic distribution requires
