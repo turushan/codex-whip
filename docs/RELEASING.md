@@ -66,6 +66,16 @@ authentication, matching how installed apps access updates.
    feed and signed DMG from GitHub without authentication. Automatic distribution requires
    publicly accessible URLs. Each feed must point to an already available release asset.
 
+6. Point the Homebrew cask in [turushan/homebrew-tap](https://github.com/turushan/homebrew-tap)
+   at the new release. The script reads both checksums from the published `SHA256SUMS.txt`:
+
+   ```sh
+   python3 scripts/update_tap.py
+   ```
+
+   The cask is marked `auto_updates`, so Homebrew installs keep updating through Sparkle and
+   the cask only decides what a new `brew install` downloads.
+
 Run the same preparation command on an Intel-built `Codex-Whip-x86_64.dmg` when publishing
 an Intel download. It writes a separate feed so each Mac receives a compatible app. Keep feeds
 signed; do not edit generated XML after signing. Sparkle verifies signatures before extracting updates.

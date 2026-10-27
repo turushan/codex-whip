@@ -172,7 +172,7 @@ def main():
         try:
             run([interpreter, "-m", "dmgbuild", "-s", ROOT / "scripts/dmg_settings.py",
                  "-D", f"app={app}", "-D", f"assets={ROOT / 'assets/dmg'}",
-                 "-D", f"icon={contents / 'Resources/AppIcon.icns'}", NAME, disk])
+                 "-D", f"icon={contents / 'Resources/AppIcon.icns'}", f"{NAME} {version}", disk])
             break
         except subprocess.CalledProcessError:
             disk.unlink(missing_ok=True)

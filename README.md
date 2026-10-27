@@ -65,7 +65,13 @@ What it never does: switch models, change reasoning effort or permissions, switc
 2. Open it. It is signed and notarized by Apple, so it opens like any other Mac app and lives in the menu bar.
 3. Use **Codex CLI** as usual. Choose **Start at Login** if you want Whip there every morning.
 
-Defaults: **check every five minutes · retry capacity every three minutes**. Pause any time.
+Or with Homebrew:
+
+```sh
+brew install --cask turushan/tap/codex-whip
+```
+
+Either way, Whip keeps itself up to date. Defaults: **check every five minutes · retry capacity every three minutes**. Pause any time.
 
 ## Private by design
 
