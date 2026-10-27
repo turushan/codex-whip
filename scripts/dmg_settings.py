@@ -10,7 +10,6 @@ files = [app]
 symlinks = {"Applications": "/Applications"}
 icon = defines["icon"]
 background = os.path.join(assets, "background.png")
-hide_extensions = [os.path.basename(app)]
 
 # The height includes the 28-point title bar, so the 420-point background shows whole.
 window_rect = ((200, 140), (660, 448))
