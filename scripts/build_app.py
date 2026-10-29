@@ -119,7 +119,7 @@ def main():
         "LSMinimumSystemVersion": "14.0",
         "LSUIElement": True,
         "NSHighResolutionCapable": True,
-        "NSHumanReadableCopyright": "Copyright © 2026 Codex Whip contributors",
+        "NSHumanReadableCopyright": "Copyright © 2026 Turushan Aktay",
         "WhipDefaultSettings": defaults,
         "SUFeedURL": f"{sparkle.FEED_ROOT}/appcast.xml",
         "SUPublicEDKey": sparkle.PUBLIC_KEY,
