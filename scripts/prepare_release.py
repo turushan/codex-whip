@@ -75,10 +75,17 @@ def main():
     destinations = [updates / name for name in ("appcast.xml", "appcast-arm64.xml", "appcast-x86_64.xml")]
     for destination in destinations:
         shutil.copy2(feed, destination)
+    # The README's download links name the DMG for each Mac type; all three are the same universal image.
+    assets = [archive]
+    for name in ("Codex-Whip-arm64.dmg", "Codex-Whip-x86_64.dmg"):
+        shutil.copy2(archive, archive.parent / name)
+        assets.append(archive.parent / name)
+    digest = hashlib.sha256(archive.read_bytes()).hexdigest()
     checksums = archive.parent / "SHA256SUMS.txt"
-    checksums.write_text(f"{hashlib.sha256(archive.read_bytes()).hexdigest()}  {archive.name}\n")
+    checksums.write_text("".join(f"{digest}  {asset.name}\n" for asset in assets))
+    assets.append(checksums)
     print(f"\nPrepared v{version}: " + ", ".join(str(path.relative_to(ROOT)) for path in destinations))
-    print("Upload Codex-Whip.dmg and SHA256SUMS.txt to the matching GitHub release first.")
+    print("Upload these to the matching GitHub release first: " + " ".join(str(path) for path in assets))
     print("Then commit and push the three feeds so installed apps can see the update.")
 
 if __name__ == "__main__":

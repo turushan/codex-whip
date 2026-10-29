@@ -53,14 +53,15 @@ authentication, matching how installed apps access updates.
 
    The script verifies the signing key, signs the DMG and feed with Sparkle's pinned tools,
    checks the feed signature, archive version and universal build, writes the same signed feed to
-   `updates/appcast.xml`, `appcast-arm64.xml` and `appcast-x86_64.xml`, and
-   refreshes `dist/SHA256SUMS.txt`. It never exports the private key.
+   `updates/appcast.xml`, `appcast-arm64.xml` and `appcast-x86_64.xml`, and writes the release
+   assets beside the DMG: copies named `Codex-Whip-arm64.dmg` and `Codex-Whip-x86_64.dmg` for the
+   README's download links, and a `SHA256SUMS.txt` covering all three. It never exports the private key.
    It must fail if the release key is missing or does not match the embedded public key, or if
    the DMG carries no stapled notarization ticket. Stapling changes the DMG, so the Sparkle
    signature is always made after notarization.
 
-4. Create the matching GitHub release with the DMG and `SHA256SUMS.txt`. Use a tag matching
-   `engineVersion`, such as `v1.11.0`, and target the tested source commit. Verify the asset
+4. Create the matching GitHub release with the three DMGs and `SHA256SUMS.txt` the script listed. Use a tag matching
+   `engineVersion`, such as `v1.11.0`, and target the tested source commit by its full hash. Verify the asset
    download and checksum without GitHub authentication.
 
 5. Commit and push the three prepared feeds under `updates/`. Installed apps read their
