@@ -18,9 +18,7 @@ volume and mute settings. Scanning, waiting and quitting stay silent. Turn it of
 your choice is saved locally.
 
 Choose **Watch Demo** for an illustrated film of capacity retries, a scheduled quota renewal and an
-early reset announcement. The bundled video includes original sound, with native pause, seek, replay,
-mute and volume controls. Demo audio starts only when you open the video;
-the player retains your mute/volume choices during this app session.
+early reset announcement. It opens on codexwhip.com/demo in your browser and includes original sound.
 
 The fictional sessions are labeled as a demo and include explicit compressed waits. The whip and
 progressive message entry are illustrative; the real watcher sends the saved message at once.

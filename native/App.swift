@@ -380,7 +380,6 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
     private var loginItem: NSMenuItem!
     private var preferencesMenu: PreferencesMenuController?
     private var showMessageWhenReady = false
-    private var demoController: DemoController?
     private var helperReady = false
     private var checkForUpdatesItem: NSMenuItem!
     private var automaticUpdatesItem: NSMenuItem!
@@ -497,9 +496,6 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
                 showMessageWhenReady = false
                 preferencesMenu?.editMessage()
             }
-        }
-        if isolated && arguments.contains("--show-demo") {
-            showDemo()
         }
         if let index = arguments.firstIndex(of: "--quit-after"), arguments.indices.contains(index + 1),
            let seconds = Double(arguments[index + 1]), seconds > 0, seconds.isFinite {
@@ -796,9 +792,9 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
         ])
     }
 
+    // The film lives on the website, which keeps a 13 MB video out of every download and update.
     @MainActor @objc private func showDemo() {
-        if demoController == nil { demoController = DemoController() }
-        demoController?.present()
+        NSWorkspace.shared.open(URL(string: "https://codexwhip.com/demo")!)
     }
 
     private func refreshDashboard() {
@@ -1197,7 +1193,6 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
         finishSelfTest(passed: false, error: "The app quit before Pause/Resume verification finished.")
         quitting = true
         timer?.invalidate()
-        demoController?.stop()
         menu.cancelTracking()
         supervisor.pause { sender.reply(toApplicationShouldTerminate: true) }
         return .terminateLater

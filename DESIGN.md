@@ -55,11 +55,9 @@ Keep separate Capacity and Quota recovery counts. Show a quota status row only w
 exist, distinguish the next quota check from a capacity retry countdown, and explain unknown status
 or account changes without showing account identifiers.
 
-Watch Demo opens a resizable native 16:9 video window with compact inline playback, mute and
-volume controls that keep the illustrated input visible. Play the bundled MP4 only when requested;
-it ends without looping. Bringing the open window forward preserves playback. Closing stops both
-streams; reopening starts from the beginning and retains the user's mute/volume choices during
-the app session. Sound begins at a moderate player volume and never changes the system volume.
+Watch Demo opens codexwhip.com/demo in the default browser, where the film starts at once. The app
+bundles no video, so downloads and updates stay small. A browser that refuses sound before the
+visitor interacts plays the film muted, with a button that restarts it with sound.
 
 The sixty-second marketing film follows one terminal through a night. Codex stops at 2:14 AM, a
 whip crack introduces the app, and three stories follow on the menu bar clock: a capacity retry, a

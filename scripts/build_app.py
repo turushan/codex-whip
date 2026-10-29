@@ -70,9 +70,6 @@ def main():
     args = parser.parse_args()
     if sys.platform != "darwin":
         parser.error("Build this macOS app on a Mac")
-    demo = ROOT / "docs/demo/codex-whip.mp4"
-    if not demo.is_file():
-        parser.error("The bundled demo is missing; use a complete source checkout including docs/demo")
     build = ROOT / "build"
     output = ROOT / "dist"
     build.mkdir(exist_ok=True)
@@ -140,7 +137,6 @@ def main():
         run(["xcrun", "swiftc", "-O", "-swift-version", "5",
              "-target", f"{arch}-apple-macosx14.0",
              "-framework", "AppKit", "-framework", "ServiceManagement",
-             "-framework", "AVKit", "-framework", "AVFoundation",
              "-F", contents / "Frameworks", "-framework", "Sparkle",
              "-Xlinker", "-rpath", "-Xlinker", "@executable_path/../Frameworks",
              *sorted((ROOT / "native").glob("*.swift")), "-o", slices[-1]])
@@ -150,7 +146,6 @@ def main():
     run(["xcrun", "swift", ROOT / "scripts/make_icon.swift", iconset, ROOT / "assets/AppIcon.png"])
     run(["iconutil", "-c", "icns", iconset, "-o", contents / "Resources/AppIcon.icns"])
     shutil.copy2(ROOT / "LICENSE", contents / "Resources/LICENSE.txt")
-    shutil.copy2(demo, contents / "Resources/Demo.mp4")
     shutil.copy2(ROOT / "engine/Sources/WhipEngine/Resources/whip.wav", contents / "Resources/Whip.wav")
     if (ROOT / "licenses").exists():
         shutil.copytree(ROOT / "licenses", contents / "Resources/ThirdPartyLicenses")

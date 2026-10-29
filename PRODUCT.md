@@ -35,8 +35,7 @@ The app is named Codex Whip; the command and repository are `codex-whip`.
 - The Tibo announcement is an illustrated example. Show quota confirmation before continuation; Whip checks Codex usage and does not monitor tweets. Keep the original post/avatar sources and provenance with the assets.
 - Preserve the session, model, reasoning, permissions, and service tier.
 - Distribute a self-contained Mac app and source that users can build themselves.
-- Bundle the committed demo MP4. FFmpeg is needed only to regenerate demo assets, not to build or run the app.
-- Play demo sound only after Watch Demo is selected, with native mute/volume controls and remembered choices during the app session. Closing stops both audio and video.
+- Watch Demo opens the film on codexwhip.com/demo; the app bundles no video. FFmpeg is needed only to regenerate demo assets, not to build or run the app.
 - Current releases are ad hoc signed and are not Apple-notarized. Document the first-launch macOS warning.
 - Keep all session metadata and history on the user's Mac.
 - Count recovery as successful after two uninterrupted minutes of observed retry activity, or successful completion sooner.

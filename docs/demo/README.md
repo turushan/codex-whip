@@ -38,9 +38,8 @@ Codex halts, ticks for compressed waits, check pings and confirmation chimes in
 the score’s key. Every sound is deterministic synthesis in `scripts/demo/audio`.
 There is no licensed music, downloaded sample, sound bank or voice. The mix is
 normalized to about −16 LUFS with true peaks at or below −1.5 dBTP. The README
-GIF is silent; its link opens the MP4 with sound. The native app starts sound
-only after Watch Demo is selected, supplies mute and volume controls and
-remembers those choices during the app session.
+GIF is silent; its link opens the film with sound on codexwhip.com/demo, which
+is also where the app's Watch Demo goes. The app bundles no video.
 
 ## Regenerate
 

@@ -21,14 +21,14 @@
 </div>
 
 <p align="center">
-  <a href="docs/demo/codex-whip.mp4">
+  <a href="https://codexwhip.com/demo">
     <picture>
       <source media="(prefers-reduced-motion: reduce)" srcset="docs/demo/poster.png?v=1.8.0-night">
       <img src="docs/demo/codex-whip.gif?v=1.8.0-night" alt="Animated demo: a whip crack introduces Codex Whip, then after a capacity error it waits three minutes, types the saved message, and Codex continues with the same model" width="800">
     </picture>
   </a>
 </p>
-<p align="center"><sub>Illustrated demo · Time compressed · <a href="docs/demo/codex-whip.mp4"><strong>Watch the full film with sound</strong></a></sub></p>
+<p align="center"><sub>Illustrated demo · Time compressed · <a href="https://codexwhip.com/demo"><strong>Watch the full film with sound</strong></a></sub></p>
 
 ## The 2 AM problem
 
@@ -57,7 +57,7 @@ What it never does: switch models, change reasoning effort or permissions, switc
 - **Hear the whip.** A crack when a retry goes out, and one when the app opens. On by default, one click to turn off.
 - **Activity report.** Capacity and quota recoveries for the last 24 hours, counted separately.
 - **Stays current.** Start at Login and automatic updates, signed and verified before installing.
-- **Watch Demo.** The illustrated film, with sound, right from the menu.
+- **Watch Demo.** Opens the illustrated film, with sound, on codexwhip.com.
 
 ## Install
 
