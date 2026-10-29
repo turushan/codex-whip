@@ -4,24 +4,22 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
     <channel>
         <title>Codex Whip</title>
         <item>
-            <title>1.11.0</title>
-            <pubDate>Tue, 27 Oct 2026 17:44:22 +0100</pubDate>
+            <title>1.12.0</title>
+            <pubDate>Thu, 29 Oct 2026 21:20:55 +0100</pubDate>
             <link>https://github.com/turushan/codex-whip</link>
-            <sparkle:version>1.11.0</sparkle:version>
-            <sparkle:shortVersionString>1.11.0</sparkle:shortVersionString>
+            <sparkle:version>1.12.0</sparkle:version>
+            <sparkle:shortVersionString>1.12.0</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <description sparkle:format="plain-text"><![CDATA[Codex Whip is now one universal app for Apple silicon and Intel Macs, with its engine rewritten in Swift. It starts faster and no longer unpacks a Python runtime each time it opens.
+            <description sparkle:format="plain-text"><![CDATA[Watch Demo now opens the film on codexwhip.com, so the download is about a third of its old size.
 
-New: About Codex Whip in the menu. Turning on Whip Sound plays the crack once.
-
-Automatic Updates is on by default. If it was turned off without you choosing it, this update turns it back on once.
+Codex Whip now works with Codex CLI only. The experimental Codex Desktop connector is gone.
 
 Your settings, pending retries and Activity history carry over unchanged.
 ]]></description>
-            <enclosure url="https://github.com/turushan/codex-whip/releases/download/v1.11.0/Codex-Whip.dmg" length="20405149" type="application/octet-stream" sparkle:edSignature="zo8bfUva/a6nvD0HWXwZmEKtJPXRz8jGxKRm9kCMC83hrV40tTYfuIHynTBKMjXVQQw/zHeEmsexQTXpQ5cHBA=="></enclosure>
+            <enclosure url="https://github.com/turushan/codex-whip/releases/download/v1.12.0/Codex-Whip.dmg" length="6927761" type="application/octet-stream" sparkle:edSignature="jTF85bJmG+pvHqVHbL6/I7rtV4D8+odY9VDf2+ebFsiJJyIzlJAP4tXXlb14eCn7jcVM9ChYiSKzhuAMvdUOBw=="></enclosure>
         </item>
     </channel>
 </rss><!-- sparkle-signatures:
-edSignature: YAwWJ6yKhAF7nWIXv3CHDKTJt7eQ/DbCdBp3MktgGdVV1NEoP0J3KH+uwm0nwyg4YxzYaBb/7NFldxieu4xIBw==
-length: 1649
+edSignature: OXXdCqu1BLAFC7mFbtMdjRrH7TV+zLjro6dgy/21BitQt9TyRnlH6X1BgE/XaYCrHn7VO6tSuBCxxu4H4VrnBQ==
+length: 1459
 -->
