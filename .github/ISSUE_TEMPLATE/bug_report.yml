@@ -1,0 +1,47 @@
+name: Bug report
+description: Codex Whip did not retry, retried when it should not have, or the app misbehaves.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you expected, and what Codex Whip did instead.
+    validations:
+      required: true
+  - type: input
+    id: whip-version
+    attributes:
+      label: Codex Whip version
+      description: Shown in About Codex Whip, in the menu.
+      placeholder: "1.12.0"
+    validations:
+      required: true
+  - type: input
+    id: codex-version
+    attributes:
+      label: Codex CLI version
+      description: The output of `codex --version`.
+      placeholder: "codex-cli 0.166.0"
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Doctor output
+      description: |
+        Run this read-only check in Terminal and paste the result. It sends no message and makes no model request.
+        `"/Applications/Codex Whip.app/Contents/Helpers/whip-helper" doctor`
+      render: text
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version and Mac
+      placeholder: "macOS 15.6, Apple silicon"
+  - type: textarea
+    id: activity
+    attributes:
+      label: Activity or error text
+      description: Anything the menu or the Activity window showed. Remove account details and conversation text before pasting.
